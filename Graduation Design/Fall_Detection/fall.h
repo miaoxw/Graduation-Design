@@ -9,7 +9,6 @@
 
 namespace fall
 {
-	const double SCALE = 64.0;
 	const uint8_t LFT = 41u;
 	const uint8_t UFT = 180u;
 	const int ANGLE_THRESHOLD = 60;

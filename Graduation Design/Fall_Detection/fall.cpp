@@ -2,6 +2,7 @@
 #include "ADXL345.h"
 
 using namespace fall;
+using ADXL345::SCALE;
 
 namespace fall
 {
@@ -50,7 +51,7 @@ bool fall::velocityDetect(int readingX, int readingY, int readingZ)
 {
 	unsigned long time = millis();
 	unsigned long delta = time - lastIntegrationTime;
-	if (abs(readingX - NORMAL_X) <= ADXL345::THRESHOLD&&abs(readingY - NORMAL_Y) <= ADXL345::THRESHOLD&&abs(readingZ - NORMAL_Z) <= ADXL345::THRESHOLD)
+	if (abs(readingX - NORMAL_X) <= ADXL345::THRESHOLD_0G&&abs(readingY - NORMAL_Y) <= ADXL345::THRESHOLD_0G&&abs(readingZ - NORMAL_Z) <= ADXL345::THRESHOLD_0G)
 		//只受重力时假定一定处于静止状态
 	{
 		if (++stableCount > 25)
@@ -62,11 +63,11 @@ bool fall::velocityDetect(int readingX, int readingY, int readingZ)
 	else
 	{
 		stableCount = 0;
-		if (abs(readingX - NORMAL_X) > ADXL345::THRESHOLD)
+		if (abs(readingX - NORMAL_X) > ADXL345::THRESHOLD_0G)
 			velocityX += (readingX - NORMAL_X) / SCALE * G * delta / 1000;
-		if (abs(readingY - NORMAL_Y) > ADXL345::THRESHOLD)
+		if (abs(readingY - NORMAL_Y) > ADXL345::THRESHOLD_0G)
 			velocityY += (readingY - NORMAL_Y) / SCALE * G * delta / 1000;
-		if (abs(readingZ - NORMAL_Z) > ADXL345::THRESHOLD)
+		if (abs(readingZ - NORMAL_Z) > ADXL345::THRESHOLD_0G)
 			velocityZ += (readingZ - NORMAL_Z) / SCALE * G * delta / 1000;
 	}
 
