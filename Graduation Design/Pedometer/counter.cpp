@@ -10,11 +10,13 @@ namespace Pedometer
 	double accelerationHistory[8];
 	uint8_t count;
 	unsigned long lastCrossUpTime, lastCrossDownTime;
+
+	const double PEDOMETER_THRESHOLD_LOWER_BOUND = 1.1;
 }
 
 void Pedometer::init()
 {
-	threshold = 1.35;
+	threshold = PEDOMETER_THRESHOLD_LOWER_BOUND;
 	count = 0;
 	lastAcceleration = 1.0;
 	lastCrossUpTime = lastCrossDownTime = 0;
@@ -55,7 +57,10 @@ bool Pedometer::judgeFootstep(double acceleration)
 		}
 
 		threshold = (minAcceleration + maxAcceleration) / 2;
+		if (threshold < PEDOMETER_THRESHOLD_LOWER_BOUND)
+			threshold = PEDOMETER_THRESHOLD_LOWER_BOUND;
 	}
+
 	if (lastAcceleration < threshold&&acceleration > threshold)
 		lastCrossUpTime = millis();
 	if (lastAcceleration > threshold&&acceleration < threshold)
