@@ -130,17 +130,26 @@ void setup()
 
 void loop()
 {
-	int readings[3];
-	getReading(readings);
+	//int readings[3];
+	//getReading(readings);
 
-	double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
-	bool result=judgeFootstep(acceleration);
-	if (result)
-	{
-		digitalWrite(5, HIGH);
-		delay(50);
-		digitalWrite(5, LOW);
-	}
-	Serial.println(acceleration);
-	Serial.println(result);
+	//double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
+	//bool result = judgeFootstep(acceleration);
+	//if (result)
+	//{
+	//	digitalWrite(5, HIGH);
+	//	delay(50);
+	//	digitalWrite(5, LOW);
+	//}
+	//Serial.println(acceleration);
+	//Serial.println(result);
+
+	//¿ªÖÐ¶Ï
+	Wire.beginTransmission(address);
+	Wire.write(INT_ENABLE);
+	Wire.write(0x80);
+	Wire.endTransmission();
+	Wire.beginTransmission(address);
+
+	Serial.println((int)(analogRead(0)*1.0 / 1024 * 5000));
 }
