@@ -5,6 +5,8 @@
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
 
+int state = HIGH;
+
 void getReading(int *store)
 {
 	int x, y, z;
@@ -12,22 +14,22 @@ void getReading(int *store)
 	Wire.beginTransmission(address);
 	Wire.write(X_low);
 	Wire.endTransmission();
-	Wire.requestFrom(address, 2);
-	while (Wire.available() < 2);
+	Wire.requestFrom(address, 6);
+	while (Wire.available() < 6);
 	x = (int16_t)(Wire.read() | Wire.read() << 8);
 
-	Wire.beginTransmission(address);
-	Wire.write(Y_low);
-	Wire.endTransmission();
-	Wire.requestFrom(address, 2);
-	while (Wire.available() < 2);
+	//Wire.beginTransmission(address);
+	//Wire.write(Y_low);
+	//Wire.endTransmission();
+	//Wire.requestFrom(address, 2);
+	//while (Wire.available() < 2);
 	y = (int16_t)(Wire.read() | Wire.read() << 8);
 
-	Wire.beginTransmission(address);
-	Wire.write(Z_low);
-	Wire.endTransmission();
-	Wire.requestFrom(address, 2);
-	while (Wire.available() < 2);
+	//Wire.beginTransmission(address);
+	//Wire.write(Z_low);
+	//Wire.endTransmission();
+	//Wire.requestFrom(address, 2);
+	//while (Wire.available() < 2);
 	z = (int16_t)(Wire.read() | Wire.read() << 8);
 
 	store[0] = x;
@@ -126,6 +128,45 @@ void setup()
 	Wire.write(OFSZ);
 	Wire.write(zOff);
 	Wire.endTransmission();
+
+	int a[3];
+	//置休眠模式
+	Wire.beginTransmission(address);
+	Wire.write(POWER_CTL);
+	Wire.write(0x7);//休眠模式，1Hz
+	getReading(a);
+
+	//置待机模式
+	Wire.beginTransmission(address);
+	Wire.write(POWER_CTL);
+	Wire.write(0x0);//待机模式
+	Wire.endTransmission();
+
+	//置测量模式
+	Wire.beginTransmission(address);
+	Wire.write(POWER_CTL);
+	Wire.write(0x8);//测量模式
+	Wire.endTransmission();
+
+
+	//设置中断
+	attachInterrupt(digitalPinToInterrupt(2), intt, RISING);
+
+	//开中断
+	Wire.beginTransmission(address);
+	Wire.write(INT_ENABLE);
+	Wire.write(0x80);
+	Wire.endTransmission();
+	Wire.beginTransmission(address);
+}
+
+void intt()
+{
+	digitalWrite(5, HIGH);
+	int a[3];
+	interrupts();
+	getReading(a);
+	digitalWrite(5, LOW);
 }
 
 void loop()
@@ -144,12 +185,6 @@ void loop()
 	//Serial.println(acceleration);
 	//Serial.println(result);
 
-	//开中断
-	Wire.beginTransmission(address);
-	Wire.write(INT_ENABLE);
-	Wire.write(0x80);
-	Wire.endTransmission();
-	Wire.beginTransmission(address);
-
-	Serial.println((int)(analogRead(0)*1.0 / 1024 * 5000));
+	Serial.println(analogRead(0)*1.0 * 5000 / 1024);
+	delay(500);
 }
