@@ -129,26 +129,6 @@ void setup()
 	Wire.write(zOff);
 	Wire.endTransmission();
 
-	int a[3];
-	//置休眠模式
-	Wire.beginTransmission(address);
-	Wire.write(POWER_CTL);
-	Wire.write(0x7);//休眠模式，1Hz
-	getReading(a);
-
-	//置待机模式
-	Wire.beginTransmission(address);
-	Wire.write(POWER_CTL);
-	Wire.write(0x0);//待机模式
-	Wire.endTransmission();
-
-	//置测量模式
-	Wire.beginTransmission(address);
-	Wire.write(POWER_CTL);
-	Wire.write(0x8);//测量模式
-	Wire.endTransmission();
-
-
 	//设置中断
 	attachInterrupt(digitalPinToInterrupt(2), intt, RISING);
 
@@ -163,8 +143,11 @@ void setup()
 void intt()
 {
 	digitalWrite(5, HIGH);
-	int a[3];
+
+	//I2C operations need to make use of INT!
 	interrupts();
+
+	int a[3];
 	getReading(a);
 	digitalWrite(5, LOW);
 }
@@ -184,7 +167,4 @@ void loop()
 	//}
 	//Serial.println(acceleration);
 	//Serial.println(result);
-
-	Serial.println(analogRead(0)*1.0 * 5000 / 1024);
-	delay(500);
 }
