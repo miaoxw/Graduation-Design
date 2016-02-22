@@ -5,8 +5,6 @@
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
 
-int state = HIGH;
-
 void getReading(int *store)
 {
 	int x, y, z;
@@ -15,7 +13,8 @@ void getReading(int *store)
 	Wire.write(X_low);
 	Wire.endTransmission();
 	Wire.requestFrom(address, 6);
-	while (Wire.available() < 6);
+	while (Wire.available() < 6)
+		;
 	x = (int16_t)(Wire.read() | Wire.read() << 8);
 
 	//Wire.beginTransmission(address);
@@ -46,9 +45,9 @@ void setup()
 	Wire.begin();
 	delay(50);
 
-	Serial.begin(57600);
+	//Serial.begin(57600);
 
-	//Write offset
+	//Reset offset
 	Wire.beginTransmission(address);
 	Wire.write(OFSX);
 	Wire.write(0);
@@ -83,28 +82,30 @@ void setup()
 	Wire.write(0x8);//测量模式
 	Wire.endTransmission();
 
+	//Adjustment
 	int x = 0, y = 0, z = 0;
 	for (int i = 1; i <= 20; i++)
 	{
 		Wire.beginTransmission(address);
 		Wire.write(X_low);
 		Wire.endTransmission();
-		Wire.requestFrom(address, 2);
-		while (Wire.available() < 2);
+		Wire.requestFrom(address, 6);
+		while (Wire.available() < 6)
+			;
 		x += (int16_t)(Wire.read() | Wire.read() << 8);
 
-		Wire.beginTransmission(address);
-		Wire.write(Y_low);
-		Wire.endTransmission();
-		Wire.requestFrom(address, 2);
-		while (Wire.available() < 2);
+		//Wire.beginTransmission(address);
+		//Wire.write(Y_low);
+		//Wire.endTransmission();
+		//Wire.requestFrom(address, 2);
+		//while (Wire.available() < 2);
 		y += (int16_t)(Wire.read() | Wire.read() << 8);
 
-		Wire.beginTransmission(address);
-		Wire.write(Z_low);
-		Wire.endTransmission();
-		Wire.requestFrom(address, 2);
-		while (Wire.available() < 2);
+		//Wire.beginTransmission(address);
+		//Wire.write(Z_low);
+		//Wire.endTransmission();
+		//Wire.requestFrom(address, 2);
+		//while (Wire.available() < 2);
 		z += (int16_t)(Wire.read() | Wire.read() << 8);
 		delay(15);
 	}
@@ -130,7 +131,7 @@ void setup()
 	Wire.endTransmission();
 
 	//设置中断
-	attachInterrupt(digitalPinToInterrupt(2), intt, RISING);
+	attachInterrupt(digitalPinToInterrupt(2), ADXL345ISR, RISING);
 
 	//开中断
 	Wire.beginTransmission(address);
@@ -140,31 +141,25 @@ void setup()
 	Wire.beginTransmission(address);
 }
 
-void intt()
+void ADXL345ISR()
 {
-	digitalWrite(5, HIGH);
-
 	//I2C operations need to make use of INT!
 	interrupts();
 
-	int a[3];
-	getReading(a);
-	digitalWrite(5, LOW);
+	int readings[3];
+	getReading(readings);
+
+	double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
+	bool result = judgeFootstep(acceleration);
+	if (result)
+	{
+		digitalWrite(5, HIGH);
+		for (int i = 0; i < 5000; i++)
+			;
+		digitalWrite(5, LOW);
+	}
 }
 
 void loop()
 {
-	//int readings[3];
-	//getReading(readings);
-
-	//double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
-	//bool result = judgeFootstep(acceleration);
-	//if (result)
-	//{
-	//	digitalWrite(5, HIGH);
-	//	delay(50);
-	//	digitalWrite(5, LOW);
-	//}
-	//Serial.println(acceleration);
-	//Serial.println(result);
 }
