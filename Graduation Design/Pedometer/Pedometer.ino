@@ -2,6 +2,8 @@
 #include "ADXL345.h"
 #include "counter.h"
 
+unsigned long stepCount;
+
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
 
@@ -41,6 +43,7 @@ void setup()
 	pinMode(5, OUTPUT);
 	digitalWrite(5, LOW);
 	Pedometer::init();
+	stepCount = 0;
 
 	Wire.begin();
 	delay(50);
@@ -143,23 +146,30 @@ void setup()
 
 void ADXL345ISR()
 {
+	static int readings[3];
+
 	//I2C operations need to make use of INT!
 	interrupts();
 
-	int readings[3];
 	getReading(readings);
 
 	double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
 	bool result = judgeFootstep(acceleration);
 	if (result)
-	{
-		digitalWrite(5, HIGH);
-		for (int i = 0; i < 5000; i++)
-			;
-		digitalWrite(5, LOW);
-	}
+		stepCount++;
+}
+
+void beep()
+{
+	digitalWrite(5, HIGH);
+	delay(100);
+	digitalWrite(5, LOW);
 }
 
 void loop()
 {
+	static unsigned long lastCount;
+	if (lastCount < stepCount)
+		beep();
+	lastCount = stepCount;
 }
