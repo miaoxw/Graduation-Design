@@ -17,22 +17,10 @@ void getReading(int *store)
 	Wire.requestFrom(address, 6);
 	while (Wire.available() < 6)
 		;
+	
 	x = (int16_t)(Wire.read() | Wire.read() << 8);
-
-	//Wire.beginTransmission(address);
-	//Wire.write(Y_low);
-	//Wire.endTransmission();
-	//Wire.requestFrom(address, 2);
-	//while (Wire.available() < 2);
 	y = (int16_t)(Wire.read() | Wire.read() << 8);
-
-	//Wire.beginTransmission(address);
-	//Wire.write(Z_low);
-	//Wire.endTransmission();
-	//Wire.requestFrom(address, 2);
-	//while (Wire.available() < 2);
 	z = (int16_t)(Wire.read() | Wire.read() << 8);
-
 	store[0] = x;
 	store[1] = y;
 	store[2] = z;
@@ -41,14 +29,11 @@ void getReading(int *store)
 void setup()
 {
 	pinMode(5, OUTPUT);
-	digitalWrite(5, LOW);
 	Pedometer::init();
 	stepCount = 0;
 
 	Wire.begin();
 	delay(50);
-
-	//Serial.begin(57600);
 
 	//Reset offset
 	Wire.beginTransmission(address);
@@ -115,22 +100,22 @@ void setup()
 	x /= 20;
 	y /= 20;
 	z /= 20;
-	int8_t xOff = -round(x / 4.0);
-	int8_t yOff = -round(y / 4.0);
-	int8_t zOff = -round((z - 64) / 4.0);
+	int8_t xOffset = -round(x / 4.0);
+	int8_t yOffset = -round(y / 4.0);
+	int8_t zOffset = -round((z - 64) / 4.0);
 
 	//Write offset
 	Wire.beginTransmission(address);
 	Wire.write(OFSX);
-	Wire.write(xOff);
+	Wire.write(xOffset);
 	Wire.endTransmission();
 	Wire.beginTransmission(address);
 	Wire.write(OFSY);
-	Wire.write(yOff);
+	Wire.write(yOffset);
 	Wire.endTransmission();
 	Wire.beginTransmission(address);
 	Wire.write(OFSZ);
-	Wire.write(zOff);
+	Wire.write(zOffset);
 	Wire.endTransmission();
 
 	//ÉèÖÃÖÐ¶Ï
@@ -141,7 +126,6 @@ void setup()
 	Wire.write(INT_ENABLE);
 	Wire.write(0x80);
 	Wire.endTransmission();
-	Wire.beginTransmission(address);
 }
 
 void ADXL345ISR()
@@ -153,7 +137,9 @@ void ADXL345ISR()
 
 	getReading(readings);
 
+	//Complex calculation is related to floating-point conversion
 	double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
+
 	bool result = judgeFootstep(acceleration);
 	if (result)
 		stepCount++;
@@ -169,7 +155,7 @@ void beep()
 void loop()
 {
 	static unsigned long lastCount;
-	if (lastCount < stepCount)
+	if (lastCount != stepCount)
 		beep();
 	lastCount = stepCount;
 }
