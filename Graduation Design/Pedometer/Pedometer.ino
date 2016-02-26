@@ -148,7 +148,7 @@ void ADXL345ISR()
 void beep()
 {
 	digitalWrite(5, HIGH);
-	delay(100);
+	delay(15);
 	digitalWrite(5, LOW);
 }
 
