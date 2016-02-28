@@ -81,19 +81,7 @@ void setup()
 		while (Wire.available() < 6)
 			;
 		x += (int16_t)(Wire.read() | Wire.read() << 8);
-
-		//Wire.beginTransmission(address);
-		//Wire.write(Y_low);
-		//Wire.endTransmission();
-		//Wire.requestFrom(address, 2);
-		//while (Wire.available() < 2);
 		y += (int16_t)(Wire.read() | Wire.read() << 8);
-
-		//Wire.beginTransmission(address);
-		//Wire.write(Z_low);
-		//Wire.endTransmission();
-		//Wire.requestFrom(address, 2);
-		//while (Wire.available() < 2);
 		z += (int16_t)(Wire.read() | Wire.read() << 8);
 		delay(15);
 	}
