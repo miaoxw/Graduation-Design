@@ -7,70 +7,83 @@ namespace Pedometer
 	double accelerationRecord[150];
 	double lastAcceleration;
 	double threshold;
-	double accelerationHistory[8];
+	double accelerationHistory[16];
 	uint8_t count;
-	unsigned long lastCrossUpTime, lastCrossDownTime;
+	unsigned long lastPeakTick;
+	unsigned long tick;
 
-	const double PEDOMETER_THRESHOLD_LOWER_BOUND = 1.0;
+	const double PEDOMETER_THRESHOLD_LOWER_BOUND = 1.02;
+	const double PEDOMETER_GRAVITY_BASIS = 1.0;
 }
 
 void Pedometer::init()
 {
 	threshold = PEDOMETER_THRESHOLD_LOWER_BOUND;
 	count = 0;
+	tick = 0;
 	lastAcceleration = 1.0;
-	lastCrossUpTime = lastCrossDownTime = 0;
+	lastPeakTick = 0;
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 16; i++)
 		accelerationHistory[i] = 1.0;
 }
 
 bool Pedometer::judgeFootstep(double acceleration)
 {
+	tick++;
+
+	if (isnan(acceleration))
+		return false;
+
 	bool ret = false;
+	static bool rising;
 
-	accelerationRecord[count++] = acceleration;
-
-	//均值滤波，当前新数据权重增加为2
-	for (int i = 0; i < 7; i++)
+	//均值滤波，窗口大小已经扩充至16
+	for (int i = 0; i < 15; i++)
 		accelerationHistory[i + 1] = accelerationHistory[i];
 	accelerationHistory[0] = acceleration;
 
-	double filteredAcceleration = acceleration;
-	for (int i = 0; i < 8; i++)
+	double filteredAcceleration = 0.0;
+	for (int i = 0; i < 16; i++)
 		filteredAcceleration += accelerationHistory[i];
-	filteredAcceleration /= 9.0;
-	acceleration = filteredAcceleration;
+	filteredAcceleration /= 16;
+
+	//此处存入滤波后的数据
+	accelerationRecord[count++] = filteredAcceleration;
 
 	if (count == 150u)
 	{
 		count = 0;
 
-		double minAcceleration = 1e4;
 		double maxAcceleration = -1e4;
 		for (int i = 0; i < 150; i++)
 		{
-			if (accelerationRecord[i] < minAcceleration)
-				minAcceleration = accelerationRecord[i];
 			if (accelerationRecord[i] > maxAcceleration)
 				maxAcceleration = accelerationRecord[i];
 		}
 
-		threshold = minAcceleration*0.6 + maxAcceleration*0.4;
+		threshold = (maxAcceleration + PEDOMETER_GRAVITY_BASIS) / 2;
 		if (threshold < PEDOMETER_THRESHOLD_LOWER_BOUND)
 			threshold = PEDOMETER_THRESHOLD_LOWER_BOUND;
 	}
 
-	if (lastAcceleration < threshold&&acceleration > threshold)
-		lastCrossUpTime = millis();
-	if (lastAcceleration > threshold&&acceleration < threshold)
+	if (filteredAcceleration >= lastAcceleration)
+		rising = true;
+	else
 	{
-		lastCrossDownTime = millis();
-		unsigned long deltaTime = lastCrossDownTime - lastCrossUpTime;
-		if (deltaTime >= FOOTSTEP_TIME_LOWER_BOUND&&deltaTime <= FOOTSTEP_TIME_UPPER_BOUND)
-			ret = true;
+		if (lastAcceleration >= threshold&&rising)
+		{
+			unsigned long currentTick = tick;
+			unsigned long deltaTick = currentTick - lastPeakTick;
+
+			if (deltaTick > FOOTSTEP_TIME_LOWER_BOUND&&deltaTick < FOOTSTEP_TIME_UPPER_BOUND)
+				ret = true;
+
+			lastPeakTick = currentTick;
+		}
+		rising = false;
 	}
 
-	lastAcceleration = acceleration;
+	lastAcceleration = filteredAcceleration;
 	return ret;
 }

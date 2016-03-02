@@ -17,7 +17,7 @@ void getReading(int *store)
 	Wire.requestFrom(address, 6);
 	while (Wire.available() < 6)
 		;
-	
+
 	x = (int16_t)(Wire.read() | Wire.read() << 8);
 	y = (int16_t)(Wire.read() | Wire.read() << 8);
 	z = (int16_t)(Wire.read() | Wire.read() << 8);
@@ -145,5 +145,6 @@ void loop()
 	static unsigned long lastCount;
 	if (lastCount != stepCount)
 		beep();
+
 	lastCount = stepCount;
 }

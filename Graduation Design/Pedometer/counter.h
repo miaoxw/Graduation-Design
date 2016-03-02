@@ -9,8 +9,8 @@
 
 namespace Pedometer
 {
-	const unsigned long FOOTSTEP_TIME_LOWER_BOUND = 125u;
-	const unsigned long FOOTSTEP_TIME_UPPER_BOUND = 1000u;
+	const unsigned long FOOTSTEP_TIME_LOWER_BOUND = 10u;
+	const unsigned long FOOTSTEP_TIME_UPPER_BOUND = 100u;
 
 	void init();
 	bool judgeFootstep(double acceleration);
