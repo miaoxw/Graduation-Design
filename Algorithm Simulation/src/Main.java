@@ -2,7 +2,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
@@ -19,6 +18,7 @@ public class Main
 	
 	//Parameters to adjust
 	public static final double PEDOMETER_THRESHOLD_LOWER_BOUND=1.08;
+	public static final double PEDOMETER_THRESHOLD_UPPER_BOUND=4;
 	public static final double PEDOMETER_GRAVITY_BASIS=1.0;
 	public static final long FOOTSTEP_TIME_LOWER_BOUND=13;
 	public static final long FOOTSTEP_TIME_UPPER_BOUND=100;
@@ -26,6 +26,7 @@ public class Main
 	public static double accelerationRecord[]=new double[150];
 	public static double lastAcceleration;
 	public static double threshold;
+	public static double thresholdCeil;
 	public static double accelerationHistory[]=new double[32];
 	public static int count;
 	public static long lastPeakTick;
@@ -35,7 +36,7 @@ public class Main
 	{
 		try
 		{
-			inputStream=new FileInputStream("F:/文档/大四/毕业设计/Test Input/随手摆动.txt");
+			inputStream=new FileInputStream("F:/文档/大四/毕业设计/Test Input/袋中走动.txt");
 			scanner=new Scanner(inputStream);
 			File writtenFile=new File("F:/文档/大四/毕业设计/Test Input/算法日志.txt");
 			if(writtenFile.exists())
@@ -43,7 +44,7 @@ public class Main
 			writtenFile.createNewFile();
 			outputStream=new FileOutputStream(writtenFile);
 			fileWriter=new OutputStreamWriter(outputStream,"utf-8");
-			fileWriter.write("原始加速度,平滑加速度,threshold,计步\r\n");
+			fileWriter.write("原始加速度,平滑加速度,threshold,计步,threshold上阈值\r\n");
 		}
 		catch(FileNotFoundException e)
 		{
@@ -116,17 +117,25 @@ public class Main
 		{
 			count=0;
 			
-//			double accTotal=0.0;
+			double accTotal=0.0;
+			int peakCount=0;
 			double maxAcceleration=-1e4;
-			for(int i=0;i<150;i++)
+			for(int i=1;i<149;i++)
 			{
-				if(accelerationRecord[i]>maxAcceleration)
-					maxAcceleration=accelerationRecord[i];
-//				accTotal+=accelerationRecord[i];
+//				if(accelerationRecord[i]>maxAcceleration)
+//					maxAcceleration=accelerationRecord[i];
+				if(accelerationRecord[i]>accelerationRecord[i-1]&&accelerationRecord[i]<accelerationRecord[i+1]&&accelerationRecord[i]>PEDOMETER_GRAVITY_BASIS)
+				{
+					accTotal+=accelerationRecord[i];
+					peakCount++;
+				}
 			}
 			
-			threshold=maxAcceleration*0.25+PEDOMETER_GRAVITY_BASIS*0.75;
-//			threshold=accTotal/150;
+//			threshold=maxAcceleration*0.25+PEDOMETER_GRAVITY_BASIS*0.75;
+//			if(threshold<PEDOMETER_THRESHOLD_LOWER_BOUND)
+//				threshold=PEDOMETER_THRESHOLD_LOWER_BOUND;
+//			updateThresholdCeil();
+			threshold=accTotal/peakCount;
 			if(threshold<PEDOMETER_THRESHOLD_LOWER_BOUND)
 				threshold=PEDOMETER_THRESHOLD_LOWER_BOUND;
 		}
@@ -155,7 +164,8 @@ public class Main
 			fileWriter.write(format.format(acceleration)+",");
 			fileWriter.write(format.format(filteredAcceleration)+",");
 			fileWriter.write(format.format(threshold)+",");
-			fileWriter.write((ret?1:0)+"\r\n");
+			fileWriter.write((ret?1:0)+",");
+			fileWriter.write(format.format(thresholdCeil)+"\r\n");
 		}
 		catch(IOException e)
 		{
