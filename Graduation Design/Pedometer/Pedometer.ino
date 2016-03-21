@@ -2,10 +2,10 @@
 #include "ADXL345.h"
 #include "counter.h"
 
-unsigned long stepCount;
-
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
+
+volatile bool ADXL345IntComing;
 
 void getReading(int *store)
 {
@@ -28,9 +28,10 @@ void getReading(int *store)
 
 void setup()
 {
-	pinMode(5, OUTPUT);
+	Serial.begin(57600);
+	pinMode(13, OUTPUT);
+	pinMode(2, INPUT);
 	Pedometer::init();
-	stepCount = 0;
 
 	Wire.begin();
 	delay(50);
@@ -107,7 +108,8 @@ void setup()
 	Wire.endTransmission();
 
 	//设置中断
-	attachInterrupt(digitalPinToInterrupt(2), ADXL345ISR, RISING);
+	ADXL345IntComing = false;
+	attachInterrupt(0, ADXL345ISR, RISING);
 
 	//开中断
 	Wire.beginTransmission(address);
@@ -118,33 +120,33 @@ void setup()
 
 void ADXL345ISR()
 {
-	static int readings[3];
-
-	//I2C operations need to make use of INT!
-	interrupts();
-
-	getReading(readings);
-
-	//Complex calculation is related to floating-point conversion
-	double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
-
-	bool result = judgeFootstep(acceleration);
-	if (result)
-		stepCount++;
+	ADXL345IntComing = true;
 }
 
 void beep()
 {
-	digitalWrite(5, HIGH);
+	digitalWrite(13, HIGH);
 	delay(15);
-	digitalWrite(5, LOW);
+	digitalWrite(13, LOW);
 }
 
 void loop()
 {
-	static unsigned long lastCount;
-	if (lastCount != stepCount)
-		beep();
+	if (ADXL345IntComing)
+	{
+		noInterrupts();
+		int readings[3];
+		getReading(readings);
+		ADXL345IntComing = false;
+		interrupts();
 
-	lastCount = stepCount;
+		double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
+		bool result = judgeFootstep(acceleration);
+		Serial.iprintf("%.6lf\n", acceleration);
+
+		if (result)
+		{
+			beep();
+		}
+	}
 }

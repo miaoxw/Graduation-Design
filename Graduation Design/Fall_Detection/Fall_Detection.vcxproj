@@ -59,10 +59,14 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\cores\arduino;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\variants\linkit_one;F:\文档\大四\毕业设计\Graduation Design\Fall_Detection;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\libraries\Wire;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\libraries;C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\Extensions\frtssrbr.yvy\Micro Platforms\default\debuggers;F:\文档\Arduino\libraries;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\system/libmtk;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\system/libmtk/include;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\system/libmtk;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\system/libmtk/include;F:\文档\大四\毕业设计\Graduation Design\Pedometer;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\cores\arduino;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\variants\linkit_one;C:\Program Files (x86)\Arduino\libraries;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\libraries;C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\Extensions\frtssrbr.yvy\Micro Platforms\default\debuggers;F:\文档\Arduino\libraries;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\hardware\arm\1.1.21\libraries\Wire;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\tools\arm-none-eabi-gcc\4.8.3-2014q1\4.8.3-2014q1\include;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\tools\arm-none-eabi-gcc\4.8.3-2014q1\4.8.3-2014q1\include;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\tools\arm-none-eabi-gcc\4.8.3-2014q1\lib\gcc\arm-none-eabi\4.8.3\include;C:\Users\mxw_1\AppData\Local\arduino15\packages\LinkIt\tools\arm-none-eabi-gcc\4.8.3-2014q1\lib\gcc\arm-none-eabi\4.8.3\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>F:\文档\大四\毕业设计\Graduation Design\Fall_Detection\__vm\.Fall_Detection.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PreprocessorDefinitions>printf=iprintf;F_CPU=84000000L;ARDUINO=10607;ARDUINO_MTK_ONE;ARDUINO_ARCH_ARM;__COMPILER_GCC__;__LINKIT_ONE__;__LINKIT_ONE_RELEASE__;USB_VID=0x0E8D;USB_PID=0x0023;USBCON;__cplusplus=201103L;GCC_VERSION=40803;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -88,4 +92,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties arduino.upload.port="COM13" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>
