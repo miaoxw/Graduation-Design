@@ -1,11 +1,11 @@
 #include <Wire.h>
 #include "ADXL345.h"
 #include "counter.h"
+#include <LTask.h>
+#include "stddef.h"
 
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
-
-volatile bool ADXL345IntComing;
 
 void getReading(int *store)
 {
@@ -106,21 +106,6 @@ void setup()
 	Wire.write(OFSZ);
 	Wire.write(zOffset);
 	Wire.endTransmission();
-
-	//设置中断
-	ADXL345IntComing = false;
-	attachInterrupt(0, ADXL345ISR, RISING);
-
-	//开中断
-	Wire.beginTransmission(address);
-	Wire.write(INT_ENABLE);
-	Wire.write(0x80);
-	Wire.endTransmission();
-}
-
-void ADXL345ISR()
-{
-	ADXL345IntComing = true;
 }
 
 void beep()
@@ -132,21 +117,4 @@ void beep()
 
 void loop()
 {
-	if (ADXL345IntComing)
-	{
-		noInterrupts();
-		int readings[3];
-		getReading(readings);
-		ADXL345IntComing = false;
-		interrupts();
-
-		double acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
-		bool result = judgeFootstep(acceleration);
-		Serial.iprintf("%.6lf\n", acceleration);
-
-		if (result)
-		{
-			beep();
-		}
-	}
 }
