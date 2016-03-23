@@ -15,28 +15,34 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Fall_Detection.ino" />
+    <None Include="Wearable_Device.ino" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="__vm\.Fall_Detection.vsarduino.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fft.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ADXL345.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fall.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="fft.cpp">
+    <ClCompile Include="counter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="fall.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ADXL345.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="counter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fall.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="priority.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="threadStarter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="__vm\.Wearable_Device.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

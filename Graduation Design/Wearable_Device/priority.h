@@ -1,0 +1,20 @@
+#ifndef PRIORITY_H
+#define PRIORITY_H
+namespace Prority
+{
+	const VMUINT8 WAKEUP = 64;
+
+	const VMUINT8 FALL_ALARM = 127;
+
+	const VMUINT8 COMMAND_RX = 184;
+	const VMUINT8 COMMAND_TX = 192;
+
+	const VMUINT8 FALL_DETECTOR = 225;
+	const VMUINT8 PEDOMETER = 226;
+
+	const VMUINT8 DATA_COLLECTOR = 233;
+
+	const VMUINT8 MAIN_LOOP = 245;
+}
+#endif // PRIORITY_H
+
