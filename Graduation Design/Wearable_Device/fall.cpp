@@ -16,6 +16,10 @@ namespace fall
 	double velocityZ = 0.0;
 	unsigned long lastIntegrationTime;
 	unsigned char stableCount = 0;
+
+	bool timeDetect(int readingX, int readingY, int readingZ);
+	bool velocityDetect(int readingX, int readingY, int readingZ);
+	bool angleDetect(int readingX, int readingY, int readingZ);
 }
 
 bool fall::timeDetect(int readingX, int readingY, int readingZ)
@@ -84,11 +88,16 @@ bool fall::velocityDetect(int readingX, int readingY, int readingZ)
 
 bool fall::angleDetect(int readingX, int readingY, int readingZ)
 {
-	//标准重力场可以定义为(0,0,1)，也可以定义为(0,0,64)，总之xy维度一定为0；因此，计算内积时，取Z轴读书即可。
+	//标准重力场可以定义为(0,0,1)，也可以定义为(0,0,64)，总之xy维度一定为0；因此，计算内积时，取Z轴读数即可。
 	double dotProduct = readingZ*(double)NORMAL_Z;
-	double readingModule = sqrt(readingX*readingX + readingY*readingY + readingZ * readingZ);
+	double readingModule = sqrt(readingX*readingX + readingY*readingY + readingZ*readingZ);
 	double referenceModule = (double)NORMAL_Z;
 	double theta = acos(dotProduct / readingModule / referenceModule) * 180 / PI;
 	//Serial.println(int(theta));
 	return theta > ANGLE_THRESHOLD;
+}
+
+bool fall::judgeFall(int readingX, int readingY, int readingZ)
+{
+	return timeDetect(readingX, readingY, readingZ) && velocityDetect(readingX, readingY, readingZ) && angleDetect(readingX, readingY, readingZ);
 }

@@ -22,13 +22,7 @@ namespace fall
 	const int NORMAL_Y = 0;
 	const int NORMAL_Z = 64;
 
-	extern unsigned long lastIntegrationTime;
-
-	bool timeDetect(int readingX, int readingY, int readingZ);
-
-	bool velocityDetect(int readingX, int readingY, int readingZ);
-
-	bool angleDetect(int readingX, int readingY, int readingZ);
+	bool judgeFall(int readingX, int readingY, int readingZ);
 };
 
 #endif
