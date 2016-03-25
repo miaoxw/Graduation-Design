@@ -1,6 +1,6 @@
 #ifndef PRIORITY_H
 #define PRIORITY_H
-namespace Prority
+namespace Priority
 {
 	const VMUINT8 WAKEUP = 64;
 

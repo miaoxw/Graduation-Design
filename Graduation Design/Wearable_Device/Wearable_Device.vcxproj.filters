@@ -38,10 +38,10 @@
     <ClInclude Include="priority.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="threadStarter.h">
+    <ClInclude Include="__vm\.Wearable_Device.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="__vm\.Wearable_Device.vsarduino.h">
+    <ClInclude Include="ThreadStarter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

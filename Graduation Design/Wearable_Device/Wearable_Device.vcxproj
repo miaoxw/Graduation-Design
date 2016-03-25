@@ -82,7 +82,7 @@
     <ClInclude Include="counter.h" />
     <ClInclude Include="fall.h" />
     <ClInclude Include="priority.h" />
-    <ClInclude Include="threadStarter.h" />
+    <ClInclude Include="ThreadStarter.h" />
     <ClInclude Include="__vm\.Wearable_Device.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>

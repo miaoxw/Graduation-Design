@@ -3,20 +3,20 @@
 #include "counter.h"
 #include <LTask.h>
 #include "stddef.h"
-#include "threadStarter.h"
 #include "priority.h"
 #include <string.h>
 #include "fall.h"
+#include "ThreadStarter.h"
 
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
 using fall::judgeFall;
 
-VM_SIGNAL_ID fallAlarm, sendMessage;
-vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor;
+VM_SIGNAL_ID fallAlarm, sendMessage, startRunning;
+vm_thread_mutex_struct mutexSensorDataWrite, mutexReaderCount, mutexSensor;
 int readCount;
-int globalReadings[3];
-double acceleration;
+volatile int globalReadings[3];
+volatile double acceleration;
 
 void getReading(int *store)
 {
@@ -41,8 +41,8 @@ void setup()
 {
 	pinMode(13, OUTPUT);
 	Serial.begin(57600);
-	Pedometer::init();
 
+	Pedometer::init();
 	Wire.begin();
 	delay(50);
 
@@ -123,21 +123,29 @@ void setup()
 	vm_mutex_create(&mutexSensor);
 	fallAlarm = vm_signal_init();
 	sendMessage = vm_signal_init();
-	
+	startRunning = vm_signal_init();
+
+	globalReadings[0] = globalReadings[1] = globalReadings[2] = 123;
+
 	//建立其它工作线程
-	ThreadStarter startBlock;
+	ThreadStarter fallDetectStartBlock;
+	fallDetectStartBlock.func = fallDetect;
+	fallDetectStartBlock.priority = Priority::FALL_DETECTOR;
+	LTask.remoteCall(createThread, &fallDetectStartBlock);
 
-	startBlock.func = fallDetect;
-	startBlock.priority = Prority::FALL_DETECTOR;
-	LTask.remoteCall(createThread, &startBlock);
+	ThreadStarter pedometerStartBlock;
+	pedometerStartBlock.func = pedometer;
+	pedometerStartBlock.priority = Priority::PEDOMETER;
+	LTask.remoteCall(createThread, &pedometerStartBlock);
 
-	startBlock.func = pedometer;
-	startBlock.priority = Prority::PEDOMETER;
-	LTask.remoteCall(createThread, &startBlock);
+	ThreadStarter dataCollectorStartBlock;
+	dataCollectorStartBlock.func = dataCollector;
+	dataCollectorStartBlock.priority = Priority::DATA_COLLECTOR;
+	LTask.remoteCall(createThread, &dataCollectorStartBlock);
 
-	startBlock.func = dataCollector;
-	startBlock.priority = Prority::DATA_COLLECTOR;
-	LTask.remoteCall(createThread, &startBlock);
+	vm_signal_post(startRunning);
+	delay(1000);
+	vm_signal_deinit(startRunning);
 }
 
 boolean createThread(void *ptr)
@@ -155,7 +163,7 @@ VMINT32 fallDetect(VM_THREAD_HANDLE thread_handle, void *userData)
 	int readings[3];
 	double acceleration;
 
-	delay(20000);
+	vm_signal_wait(startRunning);
 	uint32_t loopStart = millis();
 
 	while (true)
@@ -169,8 +177,10 @@ VMINT32 fallDetect(VM_THREAD_HANDLE thread_handle, void *userData)
 		vm_mutex_unlock(&mutexSensor);
 
 		//数据迁移至本地
-		memcpy(readings, globalReadings, sizeof(globalReadings));
+		memcpy(readings, (const void*)globalReadings, sizeof(globalReadings));
 		acceleration = ::acceleration;
+
+		digitalWrite(13, HIGH);
 
 		vm_mutex_unlock(&mutexReaderCount);
 		readCount--;
@@ -178,19 +188,21 @@ VMINT32 fallDetect(VM_THREAD_HANDLE thread_handle, void *userData)
 			vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexReaderCount);
 
-		if (judgeFall(readings[0], readings[1], readings[2]))
-		{
-			Serial.println("Falling!");
-			vm_signal_post(fallAlarm);
-		}
+		//if (judgeFall(readings[0], readings[1], readings[2]))
+		//{
+		//	Serial.println("Falling!");
+		//	vm_signal_post(fallAlarm);
+		//}
 
 		uint32_t now = millis();
 		uint32_t toDelay = (now - loopStart) % 20;
+		int ratio = (now - loopStart) / 20;
 		if (!toDelay)
 			toDelay = 20;
-		loopStart += 20;
+		loopStart += 20 * ratio;
 		delay(toDelay);
 	}
+	return 0;
 }
 
 VMINT32 pedometer(VM_THREAD_HANDLE thread_handle, void *userData)
@@ -200,7 +212,7 @@ VMINT32 pedometer(VM_THREAD_HANDLE thread_handle, void *userData)
 
 	long stepCount = 0;
 
-	delay(20000);
+	vm_signal_wait(startRunning);
 	uint32_t loopStart = millis();
 
 	while (true)
@@ -214,8 +226,10 @@ VMINT32 pedometer(VM_THREAD_HANDLE thread_handle, void *userData)
 		vm_mutex_unlock(&mutexSensor);
 
 		//数据迁移至本地
-		memcpy(readings, globalReadings, sizeof(globalReadings));
+		memcpy(readings, (void*)globalReadings, sizeof(globalReadings));
 		acceleration = ::acceleration;
+
+		digitalWrite(13, LOW);
 
 		vm_mutex_unlock(&mutexReaderCount);
 		readCount--;
@@ -223,48 +237,53 @@ VMINT32 pedometer(VM_THREAD_HANDLE thread_handle, void *userData)
 			vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexReaderCount);
 
-		if (judgeFootstep(acceleration))
-		{
-			stepCount++;
-			Serial.println("A step!");
-		}
+		//if (judgeFootstep(acceleration))
+		//{
+		//	stepCount++;
+		//	Serial.println("A step!");
+		//}
 
 		uint32_t now = millis();
 		uint32_t toDelay = (now - loopStart) % 20;
+		int ratio = (now - loopStart) / 20;
 		if (!toDelay)
 			toDelay = 20;
-		loopStart += 20;
+		loopStart += 20 * ratio;
 		delay(toDelay);
 	}
+	return 0;
 }
 
 VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle, void *userData)
 {
+	int readings[3];
+
+	vm_signal_wait(startRunning);
 	uint32_t loopStart = millis();
 
-	uint32_t signal = HIGH;
-
 	while (true)
-	{
-		int readings[3];
+	{		
 		getReading(readings);
 
 		vm_mutex_lock(&mutexSensor);
 		vm_mutex_lock(&mutexSensorDataWrite);
-		memcpy(globalReadings, readings, sizeof(readings));
+		memcpy((void*)globalReadings, readings, sizeof(readings));
 		acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
-		digitalWrite(13, signal);
-		signal = 1 - signal;
+
+		digitalWrite(13, HIGH);
 		vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexSensor);
 
 		uint32_t now = millis();
+		Serial.println(now - loopStart);
 		uint32_t toDelay = (now - loopStart) % 20;
+		int ratio = (now - loopStart) / 20;
 		if (!toDelay)
 			toDelay = 20;
-		loopStart += 20;
+		loopStart += 20 * ratio;
 		delay(toDelay);
 	}
+	return 0;
 }
 
 void loop()
