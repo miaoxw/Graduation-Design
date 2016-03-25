@@ -182,17 +182,17 @@ VMINT32 fallDetect(VM_THREAD_HANDLE thread_handle, void *userData)
 
 		digitalWrite(13, HIGH);
 
-		vm_mutex_unlock(&mutexReaderCount);
+		vm_mutex_lock(&mutexReaderCount);
 		readCount--;
 		if (readCount == 0)
 			vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexReaderCount);
 
-		//if (judgeFall(readings[0], readings[1], readings[2]))
-		//{
-		//	Serial.println("Falling!");
-		//	vm_signal_post(fallAlarm);
-		//}
+		if (judgeFall(readings[0], readings[1], readings[2]))
+		{
+			Serial.println("Falling!");
+			vm_signal_post(fallAlarm);
+		}
 
 		uint32_t now = millis();
 		uint32_t toDelay = (now - loopStart) % 20;
@@ -229,19 +229,17 @@ VMINT32 pedometer(VM_THREAD_HANDLE thread_handle, void *userData)
 		memcpy(readings, (void*)globalReadings, sizeof(globalReadings));
 		acceleration = ::acceleration;
 
-		digitalWrite(13, LOW);
-
-		vm_mutex_unlock(&mutexReaderCount);
+		vm_mutex_lock(&mutexReaderCount);
 		readCount--;
 		if (readCount == 0)
 			vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexReaderCount);
 
-		//if (judgeFootstep(acceleration))
-		//{
-		//	stepCount++;
-		//	Serial.println("A step!");
-		//}
+		if (judgeFootstep(acceleration))
+		{
+			stepCount++;
+			Serial.println("A step!");
+		}
 
 		uint32_t now = millis();
 		uint32_t toDelay = (now - loopStart) % 20;
@@ -267,15 +265,14 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle, void *userData)
 
 		vm_mutex_lock(&mutexSensor);
 		vm_mutex_lock(&mutexSensorDataWrite);
+
 		memcpy((void*)globalReadings, readings, sizeof(readings));
 		acceleration = sqrt(readings[0] * readings[0] / 4096.0 + readings[1] * readings[1] / 4096.0 + readings[2] * readings[2] / 4096.0);
 
-		digitalWrite(13, HIGH);
 		vm_mutex_unlock(&mutexSensorDataWrite);
 		vm_mutex_unlock(&mutexSensor);
 
 		uint32_t now = millis();
-		Serial.println(now - loopStart);
 		uint32_t toDelay = (now - loopStart) % 20;
 		int ratio = (now - loopStart) / 20;
 		if (!toDelay)
@@ -288,5 +285,5 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle, void *userData)
 
 void loop()
 {
-	delay(1000);
+	delay(1000000);
 }
