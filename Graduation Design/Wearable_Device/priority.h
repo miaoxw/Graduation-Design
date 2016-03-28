@@ -2,13 +2,14 @@
 #define PRIORITY_H
 namespace Priority
 {
-	const VMUINT8 WAKEUP = 64;
+	const VMUINT8 WAKEUP = 129;
 
-	const VMUINT8 FALL_ALARM = 127;
+	const VMUINT8 FALL_ALARM = 136;
 
 	const VMUINT8 COMMAND_RX = 184;
 	const VMUINT8 COMMAND_TX = 192;
 
+	const VMUINT8 DATA_FETCHER = 225;
 	const VMUINT8 FALL_DETECTOR = 225;
 	const VMUINT8 PEDOMETER = 226;
 
