@@ -1,12 +1,17 @@
 #include <Wire.h>
 #include "ADXL345.h"
 #include "counter.h"
+#include <vmthread.h>
 #include <LTask.h>
 #include "stddef.h"
 #include "priority.h"
 #include <string.h>
 #include "fall.h"
+#include <LBT\LBTServer.h>
+#include <vmpwr.h>
 #include "ThreadStarter.h"
+#include "cJSON.h"
+#include <LDateTime\LDateTime.h>
 
 using namespace ADXL345;
 using Pedometer::judgeFootstep;
@@ -41,6 +46,9 @@ void setup()
 {
 	pinMode(13, OUTPUT);
 	Serial.begin(57600);
+
+	if (!LBTServer.begin((uint8_t*)"Test"))
+		vm_reboot_normal_start();
 
 	Pedometer::init();
 	Wire.begin();
@@ -194,7 +202,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle, void *userData)
 		if (!toDelay)
 			toDelay = 20;
 		loopStart += 20 * ratio;
-		delay(toDelay);
+		vm_thread_sleep(toDelay);
 	}
 	return 0;
 }
@@ -226,13 +234,67 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle, void *userData)
 		if (!toDelay)
 			toDelay = 20;
 		loopStart += 20 * ratio;
-		delay(toDelay);
+		vm_thread_sleep(toDelay);
 	}
 	return 0;
 }
 
+VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle, void *userData)
+{
+	VM_MSG_STRUCT message;
+	while (true)
+	{
+		vm_thread_get_msg(&message);
+
+		if (LBTServer.connected())
+		{
+			cJSON *fallAlarm = cJSON_CreateObject();
+
+			unsigned int currentTimeStamp;
+			LDateTime.getRtc(&currentTimeStamp);
+			cJSON_AddStringToObject(fallAlarm, "type", "fall");
+			cJSON_AddNumberToObject(fallAlarm, "startTime", currentTimeStamp);
+			cJSON_AddNumberToObject(fallAlarm, "endTime", currentTimeStamp);
+			cJSON_AddItemToObject(fallAlarm, "statistic", cJSON_CreateObject());
+			cJSON_AddItemToObject(fallAlarm, "raw", cJSON_CreateArray());
+			cJSON_AddStringToObject(fallAlarm, "comment", "Just for test");
+
+			char *parsedStr = cJSON_Print(fallAlarm);
+			LBTServer.write(parsedStr);
+			cJSON_Delete(fallAlarm);
+			free(parsedStr);
+		}
+	}
+}
+
 void loop()
 {
-	//Nothing to do in main loop
-	delay(1000000);
+	static int noConnectionCount;
+	int sleepTime = 30000;
+
+	if (!LBTServer.connected())
+	{
+		//没有连接，等待连接
+		if (LBTServer.accept(15))
+		{
+			noConnectionCount = 0;
+			sleepTime = 10000;
+		}
+		else
+		{
+			noConnectionCount++;
+			//多次无连接可认为长时间不会有连接
+			if (noConnectionCount >= 5)
+				sleepTime = 300000;
+			else
+				sleepTime = 30000;
+		}
+	}
+	//有连接则恢复较快检查频率
+	else
+	{
+		noConnectionCount = 0;
+		sleepTime = 10000;
+	}
+	delay(sleepTime);
 }
