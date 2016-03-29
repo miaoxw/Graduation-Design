@@ -109,10 +109,6 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <..\Wearable_Device\Wearable_Device.ino>
 #include <..\Wearable_Device\ADXL345.h>
 #include <..\Wearable_Device\ThreadStarter.h>
-#include <..\Wearable_Device\cJSON.c>
-#include <..\Wearable_Device\cJSON.h>
-#include <..\Wearable_Device\cJSON_Utils.c>
-#include <..\Wearable_Device\cJSON_Utils.h>
 #include <..\Wearable_Device\counter.cpp>
 #include <..\Wearable_Device\counter.h>
 #include <..\Wearable_Device\fall.cpp>
