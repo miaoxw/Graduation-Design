@@ -12,16 +12,21 @@
 #include "ThreadStarter.h"
 #include "cJSON.h"
 #include <LDateTime\LDateTime.h>
+#include "command.h"
 
 using namespace ADXL345;
+using namespace std;
 using Pedometer::judgeFootstep;
 using fall::judgeFall;
+using Command::CommandHeap;
+using Command::CommandItem;
 
 VM_SIGNAL_ID fallAlarm,sendMessage;
-vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor;
+vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand;
 int readCount;
 volatile int globalReadings[3];
 volatile double acceleration;
+CommandHeap commandHeap;
 
 void getReading(int *store)
 {
@@ -129,6 +134,7 @@ void setup()
 	vm_mutex_create(&mutexReaderCount);
 	vm_mutex_create(&mutexSensorDataWrite);
 	vm_mutex_create(&mutexSensor);
+	vm_mutex_create(&mutexCommand);
 	fallAlarm=vm_signal_init();
 	sendMessage=vm_signal_init();
 
@@ -140,6 +146,10 @@ void setup()
 
 	startBlock.func=dataFetcher;
 	startBlock.priority=Priority::DATA_FETCHER;
+	LTask.remoteCall(createThread,&startBlock);
+
+	startBlock.func=blueToothConnector;
+	startBlock.priority=Priority::BLUETOOTH_CONNECTOR;
 	LTask.remoteCall(createThread,&startBlock);
 }
 
@@ -265,36 +275,70 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 			free(parsedStr);
 		}
 	}
+	return 0;
 }
 
-void loop()
+VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 {
-	static int noConnectionCount;
+	int noConnectionCount;
 	int sleepTime=30000;
 
-	if(!LBTServer.connected())
+	while(true)
 	{
-		//没有连接，等待连接
-		if(LBTServer.accept(15))
+		if(!LBTServer.connected())
+		{
+			//没有连接，等待连接
+			if(LBTServer.accept(15))
+			{
+				noConnectionCount=0;
+				sleepTime=10000;
+			}
+			else
+			{
+				noConnectionCount++;
+				//多次无连接可认为长时间不会有连接
+				if(noConnectionCount>=5)
+					sleepTime=300000;
+				else
+					sleepTime=30000;
+			}
+		}
+		//有连接则恢复较快检查频率
+		else
 		{
 			noConnectionCount=0;
 			sleepTime=10000;
 		}
-		else
-		{
-			noConnectionCount++;
-			//多次无连接可认为长时间不会有连接
-			if(noConnectionCount>=5)
-				sleepTime=300000;
-			else
-				sleepTime=30000;
-		}
+		vm_thread_sleep(sleepTime);
 	}
-	//有连接则恢复较快检查频率
-	else
+	return 0;
+}
+
+VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
+{
+
+}
+
+VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
+{
+
+}
+
+void loop()
+{
+	unsigned int now;
+
+	LDateTime.getRtc(&now);
+	CommandItem tmp;
+	
+	vm_mutex_lock(&mutexCommand);
+	commandHeap.peak(&tmp);
+	if(tmp.timeStamp<=now)
 	{
-		noConnectionCount=0;
-		sleepTime=10000;
+		commandHeap.pop();
+		//Operate something else
 	}
-	delay(sleepTime);
+	vm_mutex_unlock(&mutexCommand);
+
+	delay(5000);
 }
