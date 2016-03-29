@@ -26,9 +26,9 @@ bool fall::timeDetect(int readingX, int readingY, int readingZ)
 {
 	unsigned time = millis();
 
-	//剧烈加速度变化产生的报警持续1秒
+	//短时间内的跌倒触发条件被认为是同一个，不重复触发
 	if (time - lastAlarmTime <= 1000)
-		return true;
+		return false;
 
 	uint16_t acceleration = sqrt((double)(readingX*readingX + readingY*readingY + readingZ*readingZ));
 	if (lastAcceleration<LFT&&acceleration>LFT)
@@ -99,5 +99,5 @@ bool fall::angleDetect(int readingX, int readingY, int readingZ)
 
 bool fall::judgeFall(int readingX, int readingY, int readingZ)
 {
-	return timeDetect(readingX, readingY, readingZ) && velocityDetect(readingX, readingY, readingZ) && angleDetect(readingX, readingY, readingZ);
+	return velocityDetect(readingX, readingY, readingZ) && timeDetect(readingX, readingY, readingZ) && angleDetect(readingX, readingY, readingZ);
 }
