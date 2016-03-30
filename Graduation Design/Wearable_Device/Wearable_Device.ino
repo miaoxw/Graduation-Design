@@ -24,6 +24,7 @@ using Command::CommandItem;
 VM_SIGNAL_ID fallAlarm,sendMessage;
 vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand;
 int readCount;
+VMUINT32 blueToothTransmitterHandler;
 volatile int globalReadings[3];
 volatile double acceleration;
 CommandHeap commandHeap;
@@ -271,6 +272,7 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 
 			char *parsedStr=cJSON_Print(fallAlarm);
 			LBTServer.write(parsedStr);
+			LBTServer.write('\x1F');
 			cJSON_Delete(fallAlarm);
 			free(parsedStr);
 		}
@@ -316,12 +318,60 @@ VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 
 VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 {
+	char buffer[128];
 
+	while(true)
+	{
+		//有内容待读取，一条正常消息的长度不会小于50B
+		if(LBTServer.available()>50)
+		{
+			int readLength=LBTServer.readBytesUntil('\x1F',buffer,128);
+			buffer[readLength]='\0';
+
+			cJSON *jsonObject=cJSON_Parse(buffer);
+			//即时指令
+			if(cJSON_GetObjectItem(jsonObject,"time")->valueint<0)
+			{
+				bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+				bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
+
+				//该振动就振动
+			}
+			//操作是定时指令
+			else
+			{
+				CommandItem newItem;
+				newItem.timeStamp=cJSON_GetObjectItem(jsonObject,"time")->valueint;
+				newItem.beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+				newItem.vibration=cJSON_GetObjectItem(jsonObject,"vibration")->type;
+
+				vm_mutex_lock(&mutexCommand);
+				commandHeap.push(&newItem);
+				vm_mutex_unlock(&mutexCommand);
+			}
+
+			cJSON_Delete(jsonObject);
+			vm_thread_sleep(1000);
+		}
+		//无内容则休眠
+		else
+			vm_thread_sleep(10000);
+	}
+	return 0;
 }
 
 VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 {
+	blueToothTransmitterHandler=vm_thread_get_current_handle();
+	VM_MSG_STRUCT message;
 
+	while(true)
+	{
+		vm_thread_get_msg(&message);
+
+		//TODO
+	}
+	return 0;
 }
 
 void loop()
