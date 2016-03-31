@@ -1,3 +1,4 @@
+#include "sportsJudge.h"
 #include <Wire.h>
 #include "ADXL345.h"
 #include "counter.h"
@@ -20,6 +21,7 @@ using Pedometer::judgeFootstep;
 using fall::judgeFall;
 using Command::CommandHeap;
 using Command::CommandItem;
+using SportsJudge::isSporting;
 
 VM_SIGNAL_ID fallAlarm,sendMessage;
 vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand;
@@ -149,8 +151,20 @@ void setup()
 	startBlock.priority=Priority::DATA_FETCHER;
 	LTask.remoteCall(createThread,&startBlock);
 
+	startBlock.func=fallAlarmSender;
+	startBlock.priority=Priority::FALL_ALARM;
+	LTask.remoteCall(createThread,&startBlock);
+
 	startBlock.func=blueToothConnector;
 	startBlock.priority=Priority::BLUETOOTH_CONNECTOR;
+	LTask.remoteCall(createThread,&startBlock);
+
+	startBlock.func=blueToothTransmitter;
+	startBlock.priority=Priority::COMMAND_TX;
+	LTask.remoteCall(createThread,&startBlock);
+
+	startBlock.func=blueToothReceiver;
+	startBlock.priority=Priority::COMMAND_RX;
 	LTask.remoteCall(createThread,&startBlock);
 }
 
@@ -170,9 +184,13 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 	double acceleration;
 
 	long stepCount=0;
+	unsigned int currentStateStart;
+	bool sportingNow=false;
 
 	uint32_t loopStart=millis();
 
+
+	LDateTime.getRtc(&currentStateStart);
 	while(true)
 	{
 		vm_mutex_lock(&mutexSensor);
@@ -201,10 +219,47 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			vm_signal_post(fallAlarm);
 		}
 
-		if(judgeFootstep(acceleration))
+		bool newestState=isSporting(acceleration);
+		if(newestState!=sportingNow)
 		{
-			stepCount++;
-			Serial.println("A step!");
+			cJSON *messageToSend=cJSON_CreateObject();
+
+			unsigned int currentTimeStamp;
+			LDateTime.getRtc(&currentTimeStamp);
+
+			cJSON_AddStringToObject(messageToSend,"type","pedometer");
+			cJSON_AddNumberToObject(messageToSend,"startTime",currentStateStart);
+			cJSON_AddNumberToObject(messageToSend,"endTime",currentTimeStamp);
+
+			cJSON *statisticInfo=cJSON_CreateObject();
+			cJSON_AddBoolToObject(statisticInfo,"sporting",sportingNow);
+			cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
+
+			cJSON_AddItemToObject(messageToSend,"statistic",statisticInfo);
+			cJSON_AddItemToObject(messageToSend,"raw",cJSON_CreateArray());
+			cJSON_AddStringToObject(messageToSend,"comment",sportingNow?"Sporting state ended":"Idle state ended");
+
+			char *parsedStr=cJSON_Print(messageToSend);
+			cJSON_Delete(messageToSend);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,parsedStr);
+
+			sportingNow=newestState;
+			stepCount=0;
+			LDateTime.getRtc(&currentStateStart);
+		}
+
+		if(sportingNow)
+		{
+			if(judgeFootstep(acceleration))
+			{
+				stepCount++;
+				Serial.println("A step!");
+			}
+		}
+		else
+		{
+			//TODO:
+			//Codes about sleep monitoring
 		}
 
 		uint32_t now=millis();
@@ -293,7 +348,7 @@ VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 			if(LBTServer.accept(15))
 			{
 				noConnectionCount=0;
-				sleepTime=10000;
+				sleepTime=5000;
 			}
 			else
 			{
@@ -369,7 +424,9 @@ VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 	{
 		vm_thread_get_msg(&message);
 
-		//TODO
+		LBTServer.write((char*)message.user_data);
+		LBTServer.write('\x1F');
+		free(message.user_data);
 	}
 	return 0;
 }
@@ -380,7 +437,7 @@ void loop()
 
 	LDateTime.getRtc(&now);
 	CommandItem tmp;
-	
+
 	vm_mutex_lock(&mutexCommand);
 	commandHeap.peak(&tmp);
 	if(tmp.timeStamp<=now)
