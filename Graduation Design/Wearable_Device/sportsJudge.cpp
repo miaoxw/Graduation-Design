@@ -15,6 +15,6 @@ bool SportsJudge::isSporting(double acceleration)
 	}
 	else
 	{
-		return ++stableCount<150;
+		return ++stableCount<1500000;
 	}
 }

@@ -8,11 +8,11 @@
 #include "priority.h"
 #include <string.h>
 #include "fall.h"
-#include <LBT\LBTServer.h>
+#include <LBTServer.h>
 #include <vmpwr.h>
 #include "ThreadStarter.h"
 #include "cJSON.h"
-#include <LDateTime\LDateTime.h>
+#include <LDateTime.h>
 #include "command.h"
 
 using namespace ADXL345;
@@ -23,7 +23,7 @@ using Command::CommandHeap;
 using Command::CommandItem;
 using SportsJudge::isSporting;
 
-VM_SIGNAL_ID fallAlarm,sendMessage;
+VM_SIGNAL_ID fallAlarm,sendMessage,bluetoothOperationPermission;
 vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand;
 int readCount;
 VMUINT32 blueToothTransmitterHandler;
@@ -55,8 +55,8 @@ void setup()
 	pinMode(13,OUTPUT);
 	Serial.begin(57600);
 
-	if(!LBTServer.begin((uint8_t*)"Test"))
-		vm_reboot_normal_start();
+	if(!LBTServer.begin((uint8_t*)"LinkIt ONE"));
+	vm_reboot_normal_start();
 
 	Pedometer::init();
 	Wire.begin();
@@ -140,6 +140,7 @@ void setup()
 	vm_mutex_create(&mutexCommand);
 	fallAlarm=vm_signal_init();
 	sendMessage=vm_signal_init();
+	bluetoothOperationPermission=vm_signal_init();
 
 	//建立其它工作线程
 	ThreadStarter startBlock;
@@ -239,7 +240,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			cJSON_AddItemToObject(messageToSend,"raw",cJSON_CreateArray());
 			cJSON_AddStringToObject(messageToSend,"comment",sportingNow?"Sporting state ended":"Idle state ended");
 
-			char *parsedStr=cJSON_Print(messageToSend);
+			char *parsedStr=cJSON_PrintUnformatted(messageToSend);
 			cJSON_Delete(messageToSend);
 			vm_thread_send_msg(blueToothTransmitterHandler,0,parsedStr);
 
@@ -300,6 +301,7 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle,void *userData)
 		if(!toDelay)
 			toDelay=20;
 		loopStart+=20*ratio;
+
 		vm_thread_sleep(toDelay);
 	}
 	return 0;
@@ -308,10 +310,12 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle,void *userData)
 VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 {
 	VM_MSG_STRUCT message;
+	Serial.println("alarmsender: 1");
 	while(true)
 	{
 		vm_thread_get_msg(&message);
 
+		Serial.println("alarmsender: 2");
 		if(LBTServer.connected())
 		{
 			cJSON *fallAlarm=cJSON_CreateObject();
@@ -325,47 +329,55 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 			cJSON_AddItemToObject(fallAlarm,"raw",cJSON_CreateArray());
 			cJSON_AddStringToObject(fallAlarm,"comment","Just for test");
 
-			char *parsedStr=cJSON_Print(fallAlarm);
+			char *parsedStr=cJSON_PrintUnformatted(fallAlarm);
 			LBTServer.write(parsedStr);
 			LBTServer.write('\x1F');
 			cJSON_Delete(fallAlarm);
-			free(parsedStr);
+			vm_free(parsedStr);
 		}
+		Serial.println("alarmsender: 3");
 	}
 	return 0;
 }
 
 VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 {
-	int noConnectionCount;
-	int sleepTime=30000;
+	int noConnectionCount=0;
+	int sleepTime=3000;
 
 	while(true)
 	{
 		if(!LBTServer.connected())
 		{
+			Serial.println("connector: not connected");
 			//没有连接，等待连接
-			if(LBTServer.accept(15))
+			if(LBTServer.accept(30))
 			{
+				Serial.println("connector: established");
+				vm_signal_post(bluetoothOperationPermission);
 				noConnectionCount=0;
-				sleepTime=5000;
+				sleepTime=1000;
 			}
 			else
 			{
+				Serial.println("connector: timeout");
 				noConnectionCount++;
 				//多次无连接可认为长时间不会有连接
 				if(noConnectionCount>=5)
-					sleepTime=300000;
+					sleepTime=10000;
 				else
-					sleepTime=30000;
+					sleepTime=1000;
 			}
 		}
 		//有连接则恢复较快检查频率
 		else
 		{
+			Serial.println("connector: already connected");
+			vm_signal_post(bluetoothOperationPermission);
 			noConnectionCount=0;
-			sleepTime=10000;
+			sleepTime=2000;
 		}
+		Serial.println("connector: check later");
 		vm_thread_sleep(sleepTime);
 	}
 	return 0;
@@ -377,40 +389,51 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 
 	while(true)
 	{
-		//有内容待读取，一条正常消息的长度不会小于50B
-		if(LBTServer.available()>50)
+		////有内容待读取，一条正常消息的长度不会小于50B
+		//if(LBTServer.available()>50)
+		//{
+		//	int readLength=LBTServer.readBytesUntil('\x1F',buffer,128);
+		//	buffer[readLength]='\0';
+
+		//	cJSON *jsonObject=cJSON_Parse(buffer);
+		//	//即时指令
+		//	if(cJSON_GetObjectItem(jsonObject,"time")->valueint<0)
+		//	{
+		//		bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+		//		bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
+
+		//		//该振动就振动
+		//	}
+		//	//操作是定时指令
+		//	else
+		//	{
+		//		CommandItem newItem;
+		//		newItem.timeStamp=cJSON_GetObjectItem(jsonObject,"time")->valueint;
+		//		newItem.beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+		//		newItem.vibration=cJSON_GetObjectItem(jsonObject,"vibration")->type;
+
+		//		vm_mutex_lock(&mutexCommand);
+		//		commandHeap.push(&newItem);
+		//		vm_mutex_unlock(&mutexCommand);
+		//	}
+
+		//	cJSON_Delete(jsonObject);
+		//	vm_thread_sleep(1000);
+		//}
+		Serial.println("receiver: waiting signal");
+		vm_signal_wait(bluetoothOperationPermission);
+		Serial.println("receiver: signal got");
+		if(LBTServer.connected()&&LBTServer.available())
 		{
-			int readLength=LBTServer.readBytesUntil('\x1F',buffer,128);
-			buffer[readLength]='\0';
-
-			cJSON *jsonObject=cJSON_Parse(buffer);
-			//即时指令
-			if(cJSON_GetObjectItem(jsonObject,"time")->valueint<0)
-			{
-				bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
-				bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
-
-				//该振动就振动
-			}
-			//操作是定时指令
-			else
-			{
-				CommandItem newItem;
-				newItem.timeStamp=cJSON_GetObjectItem(jsonObject,"time")->valueint;
-				newItem.beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
-				newItem.vibration=cJSON_GetObjectItem(jsonObject,"vibration")->type;
-
-				vm_mutex_lock(&mutexCommand);
-				commandHeap.push(&newItem);
-				vm_mutex_unlock(&mutexCommand);
-			}
-
-			cJSON_Delete(jsonObject);
-			vm_thread_sleep(1000);
+			char buf[100];
+			int i=LBTServer.readBytesUntil('\x1F',buf,100);
+			buf[i]='\0';
+			Serial.iprintf("receiver: i=%d\n",i);
+			Serial.iprintf("receiver: content:%s\n",buf);
+			char *ret=(char*)vm_malloc(15);
+			memcpy(ret,"Hell\no to\no!",15);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
 		}
-		//无内容则休眠
-		else
-			vm_thread_sleep(10000);
 	}
 	return 0;
 }
@@ -423,10 +446,20 @@ VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 	while(true)
 	{
 		vm_thread_get_msg(&message);
+		Serial.println("transmitter: new message");
 
-		LBTServer.write((char*)message.user_data);
-		LBTServer.write('\x1F');
-		free(message.user_data);
+		//TODO: 可能需要带超时的信号等待机制以通过蓝牙进行通信
+
+		if(LBTServer.connected())
+		{
+			for(int i=1;i<=5;i++)
+			{
+				int byteSent=LBTServer.write((char*)message.user_data);
+				Serial.iprintf("transmiter: \"%s\" is sent, actually %dB.\n",(char*)message.user_data,byteSent+1);
+				LBTServer.write('\x1F');
+			}
+		}
+		vm_free(message.user_data);
 	}
 	return 0;
 }
