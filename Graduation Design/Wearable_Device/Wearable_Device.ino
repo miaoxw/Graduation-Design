@@ -1,19 +1,22 @@
-#include "sportsJudge.h"
-#include <Wire.h>
-#include "ADXL345.h"
-#include "counter.h"
-#include <vmthread.h>
-#include <LTask.h>
-#include "stddef.h"
-#include "priority.h"
+#include <stddef.h>
 #include <string.h>
-#include "fall.h"
+
 #include <LBTServer.h>
-#include <vmpwr.h>
-#include "ThreadStarter.h"
-#include "cJSON.h"
 #include <LDateTime.h>
+#include <LTask.h>
+#include <vmpwr.h>
+#include <vmthread.h>
+#include <Wire.h>
+
+#include "cJSON.h"
+
+#include "ADXL345.h"
 #include "command.h"
+#include "counter.h"
+#include "fall.h"
+#include "priority.h"
+#include "sportsJudge.h"
+#include "ThreadStarter.h"
 
 using namespace ADXL345;
 using namespace std;
