@@ -434,7 +434,23 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 			Serial.iprintf("receiver: i=%d\n",i);
 			Serial.iprintf("receiver: content:%s\n",buf);
 			char *ret=(char*)vm_malloc(15);
-			memcpy(ret,"Hell\no to\no!",15);
+			memcpy(ret,"Hello too!",15);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+
+			ret=(char*)vm_malloc(15);
+			memcpy(ret,"Hello too! 1",15);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+
+			ret=(char*)vm_malloc(15);
+			memcpy(ret,"Hello too! 2",15);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+
+			ret=(char*)vm_malloc(20);
+			memcpy(ret,"Hello t   oo! 3",20);
+			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+
+			ret=(char*)vm_malloc(15);
+			memcpy(ret,"Hello \tto\no! 4",15);
 			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
 		}
 	}
@@ -455,12 +471,9 @@ VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 
 		if(LBTServer.connected())
 		{
-			for(int i=1;i<=5;i++)
-			{
-				int byteSent=LBTServer.write((char*)message.user_data);
-				Serial.iprintf("transmiter: \"%s\" is sent, actually %dB.\n",(char*)message.user_data,byteSent+1);
-				LBTServer.write('\x1F');
-			}
+			int byteSent=LBTServer.write((char*)message.user_data);
+			Serial.iprintf("transmiter: \"%s\" is sent, actually %dB.\n",(char*)message.user_data,byteSent+1);
+			LBTServer.write('\x1F');
 		}
 		vm_free(message.user_data);
 	}
