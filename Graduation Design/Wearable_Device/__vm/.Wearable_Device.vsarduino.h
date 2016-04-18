@@ -122,4 +122,10 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <..\Wearable_Device\priority.h>
 #include <..\Wearable_Device\sportsJudge.cpp>
 #include <..\Wearable_Device\sportsJudge.h>
+#include <..\Wearable_Device\timestamp.h>
+#include <..\Wearable_Device\timestamp_compare.c>
+#include <..\Wearable_Device\timestamp_format.c>
+#include <..\Wearable_Device\timestamp_parse.c>
+#include <..\Wearable_Device\timestamp_tm.c>
+#include <..\Wearable_Device\timestamp_valid.c>
 #endif

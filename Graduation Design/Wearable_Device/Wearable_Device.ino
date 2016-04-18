@@ -9,6 +9,7 @@
 #include <Wire.h>
 
 #include "cJSON.h"
+#include "timestamp.h"
 
 #include "ADXL345.h"
 #include "command.h"
@@ -58,8 +59,8 @@ void setup()
 	pinMode(13,OUTPUT);
 	Serial.begin(57600);
 
-	if(!LBTServer.begin((uint8_t*)"LinkIt ONE"));
-	vm_reboot_normal_start();
+	if(!LBTServer.begin((uint8_t*)"LinkIt ONE"))
+		vm_reboot_normal_start();
 
 	Pedometer::init();
 	Wire.begin();
@@ -392,66 +393,60 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 
 	while(true)
 	{
-		////有内容待读取，一条正常消息的长度不会小于50B
-		//if(LBTServer.available()>50)
-		//{
-		//	int readLength=LBTServer.readBytesUntil('\x1F',buffer,128);
-		//	buffer[readLength]='\0';
-
-		//	cJSON *jsonObject=cJSON_Parse(buffer);
-		//	//即时指令
-		//	if(cJSON_GetObjectItem(jsonObject,"time")->valueint<0)
-		//	{
-		//		bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
-		//		bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
-
-		//		//该振动就振动
-		//	}
-		//	//操作是定时指令
-		//	else
-		//	{
-		//		CommandItem newItem;
-		//		newItem.timeStamp=cJSON_GetObjectItem(jsonObject,"time")->valueint;
-		//		newItem.beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
-		//		newItem.vibration=cJSON_GetObjectItem(jsonObject,"vibration")->type;
-
-		//		vm_mutex_lock(&mutexCommand);
-		//		commandHeap.push(&newItem);
-		//		vm_mutex_unlock(&mutexCommand);
-		//	}
-
-		//	cJSON_Delete(jsonObject);
-		//	vm_thread_sleep(1000);
-		//}
 		Serial.println("receiver: waiting signal");
 		vm_signal_wait(bluetoothOperationPermission);
 		Serial.println("receiver: signal got");
-		if(LBTServer.connected()&&LBTServer.available())
+
+		//有内容待读取，这里假定一条正常消息的长度不会小于50B
+		if(LBTServer.connected()&&LBTServer.available()>50)
 		{
-			char buf[100];
-			int i=LBTServer.readBytesUntil('\x1F',buf,100);
-			buf[i]='\0';
-			Serial.iprintf("receiver: i=%d\n",i);
-			Serial.iprintf("receiver: content:%s\n",buf);
-			char *ret=(char*)vm_malloc(15);
-			memcpy(ret,"Hello too!",15);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+			int readLength=LBTServer.readBytesUntil('\x1F',buffer,128);
+			buffer[readLength]='\0';
 
-			ret=(char*)vm_malloc(15);
-			memcpy(ret,"Hello too! 1",15);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+			cJSON *jsonObject=cJSON_Parse(buffer);
+			//时间校准指令
+			if(strcmp(cJSON_GetObjectItem(jsonObject,"type")->valuestring,"timesync")==0)
+			{
+				int newTime=cJSON_GetObjectItem(jsonObject,"time")->valueint;
+				datetimeInfo dateTimeInfo;
 
-			ret=(char*)vm_malloc(15);
-			memcpy(ret,"Hello too! 2",15);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+				timestamp_t timestampStruct;
+				timestampStruct.sec=newTime;
+				timestampStruct.nsec=0;
+				timestampStruct.offset=0;
 
-			ret=(char*)vm_malloc(20);
-			memcpy(ret,"Hello t   oo! 3",20);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+				char YMDHmsBuffer[36];
+				timestamp_format(YMDHmsBuffer,36,&timestampStruct);
+				sscanf(YMDHmsBuffer,"%d-%d-%dT%d:%d:%dZ",&dateTimeInfo.year,&dateTimeInfo.mon,&dateTimeInfo.day,&dateTimeInfo.hour,&dateTimeInfo.min,&dateTimeInfo.sec);
+				LDateTime.setTime(&dateTimeInfo);
+			}
+			//正常的操作指令
+			else
+			{
+				//即时指令
+				if(cJSON_GetObjectItem(jsonObject,"time")->valueint<0)
+				{
+					bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+					bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
 
-			ret=(char*)vm_malloc(15);
-			memcpy(ret,"Hello \tto\no! 4",15);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,ret);
+					//该振动就振动
+				}
+				//操作是定时指令
+				else
+				{
+					CommandItem newItem;
+					newItem.timeStamp=cJSON_GetObjectItem(jsonObject,"time")->valueint;
+					newItem.beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
+					newItem.vibration=cJSON_GetObjectItem(jsonObject,"vibration")->type;
+
+					vm_mutex_lock(&mutexCommand);
+					commandHeap.push(&newItem);
+					vm_mutex_unlock(&mutexCommand);
+				}
+			}
+
+			cJSON_Delete(jsonObject);
+			vm_thread_sleep(1000);
 		}
 	}
 	return 0;
