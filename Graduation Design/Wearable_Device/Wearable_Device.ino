@@ -35,7 +35,7 @@ volatile int globalReadings[3];
 volatile double acceleration;
 CommandHeap commandHeap;
 
-void getReading(int *store)
+void inline getReading(int *store)
 {
 	int x,y,z;
 
@@ -429,7 +429,7 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 					bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
 					bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
 
-					//该振动就振动
+					//TODO: 操作蜂鸣器与扬声器
 				}
 				//操作是定时指令
 				else
