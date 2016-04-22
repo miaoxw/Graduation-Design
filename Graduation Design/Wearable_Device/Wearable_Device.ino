@@ -17,6 +17,7 @@
 #include "fall.h"
 #include "priority.h"
 #include "sportsJudge.h"
+#include "StatisticItem.h"
 #include "ThreadStarter.h"
 
 using namespace ADXL345;
@@ -26,14 +27,16 @@ using fall::judgeFall;
 using Command::CommandHeap;
 using Command::CommandItem;
 using SportsJudge::isSporting;
+using Statistic::SendMessageQueue;
+using Statistic::StatisticType;
 
 VM_SIGNAL_ID fallAlarm,sendMessage,bluetoothOperationPermission;
-vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand;
+vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand,mutexMessage;
 int readCount;
-VMUINT32 blueToothTransmitterHandler;
 volatile int globalReadings[3];
 volatile double acceleration;
 CommandHeap commandHeap;
+SendMessageQueue messageQueue;
 
 void inline getReading(int *store)
 {
@@ -142,6 +145,7 @@ void setup()
 	vm_mutex_create(&mutexSensorDataWrite);
 	vm_mutex_create(&mutexSensor);
 	vm_mutex_create(&mutexCommand);
+	vm_mutex_create(&mutexMessage);
 	fallAlarm=vm_signal_init();
 	sendMessage=vm_signal_init();
 	bluetoothOperationPermission=vm_signal_init();
@@ -232,21 +236,14 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			unsigned int currentTimeStamp;
 			LDateTime.getRtc(&currentTimeStamp);
 
-			cJSON_AddStringToObject(messageToSend,"type","pedometer");
-			cJSON_AddNumberToObject(messageToSend,"startTime",currentStateStart);
-			cJSON_AddNumberToObject(messageToSend,"endTime",currentTimeStamp);
-
 			cJSON *statisticInfo=cJSON_CreateObject();
 			cJSON_AddBoolToObject(statisticInfo,"sporting",sportingNow);
 			cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
 
-			cJSON_AddItemToObject(messageToSend,"statistic",statisticInfo);
-			cJSON_AddItemToObject(messageToSend,"raw",cJSON_CreateArray());
-			cJSON_AddStringToObject(messageToSend,"comment",sportingNow?"Sporting state ended":"Idle state ended");
-
-			char *parsedStr=cJSON_PrintUnformatted(messageToSend);
-			cJSON_Delete(messageToSend);
-			vm_thread_send_msg(blueToothTransmitterHandler,0,parsedStr);
+			StatisticType messageType=Statistic::Pedometer;
+			vm_mutex_lock(&mutexMessage);
+			messageQueue.addMessage(currentStateStart,currentTimeStamp,messageType,statisticInfo);
+			vm_mutex_unlock(&mutexMessage);
 
 			sportingNow=newestState;
 			stepCount=0;
@@ -320,25 +317,29 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 		vm_thread_get_msg(&message);
 
 		Serial.println("alarmsender: 2");
-		if(LBTServer.connected())
-		{
-			cJSON *fallAlarm=cJSON_CreateObject();
 
-			unsigned int currentTimeStamp;
-			LDateTime.getRtc(&currentTimeStamp);
-			cJSON_AddStringToObject(fallAlarm,"type","fall");
-			cJSON_AddNumberToObject(fallAlarm,"startTime",currentTimeStamp);
-			cJSON_AddNumberToObject(fallAlarm,"endTime",currentTimeStamp);
-			cJSON_AddItemToObject(fallAlarm,"statistic",cJSON_CreateObject());
-			cJSON_AddItemToObject(fallAlarm,"raw",cJSON_CreateArray());
-			cJSON_AddStringToObject(fallAlarm,"comment","Just for test");
+		cJSON *fallAlarm=cJSON_CreateObject();
 
-			char *parsedStr=cJSON_PrintUnformatted(fallAlarm);
-			LBTServer.write(parsedStr);
-			LBTServer.write('\x1F');
-			cJSON_Delete(fallAlarm);
-			vm_free(parsedStr);
-		}
+		unsigned int currentTimeStamp;
+		LDateTime.getRtc(&currentTimeStamp);
+		cJSON_AddStringToObject(fallAlarm,"type","fall");
+		cJSON_AddNumberToObject(fallAlarm,"startTime",currentTimeStamp);
+		cJSON_AddNumberToObject(fallAlarm,"endTime",currentTimeStamp);
+		cJSON_AddItemToObject(fallAlarm,"statistic",cJSON_CreateObject());
+		cJSON_AddItemToObject(fallAlarm,"raw",cJSON_CreateArray());
+		cJSON_AddStringToObject(fallAlarm,"comment","User fell");
+
+		char *parsedStr=cJSON_PrintUnformatted(fallAlarm);
+
+		//跌倒警报非常紧急，需要在连接状态下立即发送，而不论跌倒发生在过去多远的时刻
+		while(!LBTServer.connected())
+			vm_thread_sleep(3000);
+
+		LBTServer.write(parsedStr);
+		LBTServer.write('\x1F');
+		cJSON_Delete(fallAlarm);
+		vm_free(parsedStr);
+
 		Serial.println("alarmsender: 3");
 	}
 	return 0;
@@ -454,23 +455,12 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 
 VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 {
-	blueToothTransmitterHandler=vm_thread_get_current_handle();
-	VM_MSG_STRUCT message;
-
 	while(true)
 	{
-		vm_thread_get_msg(&message);
-		Serial.println("transmitter: new message");
+		int messageSentCount=messageQueue.trySend();
 
-		//TODO: 可能需要带超时的信号等待机制以通过蓝牙进行通信
-
-		if(LBTServer.connected())
-		{
-			int byteSent=LBTServer.write((char*)message.user_data);
-			Serial.iprintf("transmiter: \"%s\" is sent, actually %dB.\n",(char*)message.user_data,byteSent+1);
-			LBTServer.write('\x1F');
-		}
-		vm_free(message.user_data);
+		Serial.iprintf("transmiter: %d stored message(s) sent.\n",messageSentCount);
+		vm_thread_sleep(10000);
 	}
 	return 0;
 }

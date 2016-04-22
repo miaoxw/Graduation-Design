@@ -86,6 +86,7 @@
     <ClInclude Include="fall.h" />
     <ClInclude Include="priority.h" />
     <ClInclude Include="sportsJudge.h" />
+    <ClInclude Include="StatisticItem.h" />
     <ClInclude Include="ThreadStarter.h" />
     <ClInclude Include="timestamp.h" />
     <ClInclude Include="__vm\.Wearable_Device.vsarduino.h" />
@@ -97,6 +98,7 @@
     <ClCompile Include="counter.cpp" />
     <ClCompile Include="fall.cpp" />
     <ClCompile Include="sportsJudge.cpp" />
+    <ClCompile Include="StatisticItem.cpp" />
     <ClCompile Include="timestamp_compare.c" />
     <ClCompile Include="timestamp_format.c" />
     <ClCompile Include="timestamp_parse.c" />

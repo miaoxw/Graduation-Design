@@ -1,7 +1,9 @@
 #ifndef COMMAND_H
 #define COMMAND_H
 
+#ifndef NULL
 #define NULL 0
+#endif
 
 namespace Command
 {
