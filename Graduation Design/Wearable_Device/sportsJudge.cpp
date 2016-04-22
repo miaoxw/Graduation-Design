@@ -15,6 +15,7 @@ bool SportsJudge::isSporting(double acceleration)
 	}
 	else
 	{
-		return ++stableCount<1500000;
+		//以50Hz的采样率计算，空闲90秒需要的时间约为1800次连续计数
+		return ++stableCount<1800;
 	}
 }
