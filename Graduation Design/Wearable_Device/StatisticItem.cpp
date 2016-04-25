@@ -68,49 +68,44 @@ bool Statistic::SendMessageQueue::addMessage(unsigned int startTime,unsigned int
 	return ret;
 }
 
-int Statistic::SendMessageQueue::trySend()
+char *Statistic::SendMessageQueue::popOne()
 {
-	int ret=0;
+	char *ret;
 
 	vm_mutex_lock(&mutexMessage);
-	while(count!=0)
+	if(count>0)
 	{
-		if(LBTServer.connected())
+		cJSON *messageToSend=cJSON_CreateObject();
+
+		switch(messages[currentCursor].type)
 		{
-			cJSON *messageToSend=cJSON_CreateObject();
-
-			switch(messages[currentCursor].type)
-			{
-				case Pedometer:
-					cJSON_AddStringToObject(messageToSend,"type","pedometer");
-					break;
-				case SleepAnalysis:
-					cJSON_AddStringToObject(messageToSend,"type","sleepAnalysis");
-					break;
-				default:
-					break;
-			}
-			cJSON_AddNumberToObject(messageToSend,"startTime",messages[currentCursor].startTime);
-			cJSON_AddNumberToObject(messageToSend,"endTime",messages[currentCursor].endTime);
-			cJSON_AddItemToObject(messageToSend,"statistic",messages[currentCursor].statisticInfo);
-			cJSON_AddItemToObject(messageToSend,"raw",cJSON_CreateArray());
-			cJSON_AddStringToObject(messageToSend,"comment","This is a comment");
-
-			char *parsedStr=cJSON_PrintUnformatted(messageToSend);
-			cJSON_Delete(messageToSend);
-
-			int byteSent=LBTServer.write(parsedStr);
-			LBTServer.write('\x1F');
-			vm_free(parsedStr);
-
-			ret++;
-			currentCursor=(currentCursor+1)%QUEUE_SIZE;
-			count--;
+			case Pedometer:
+				cJSON_AddStringToObject(messageToSend,"type","pedometer");
+				break;
+			case SleepAnalysis:
+				cJSON_AddStringToObject(messageToSend,"type","sleepAnalysis");
+				break;
+			default:
+				break;
 		}
-		else
-			break;
-	}
-	vm_mutex_unlock(&mutexMessage);
 
+		cJSON_AddNumberToObject(messageToSend,"startTime",messages[currentCursor].startTime);
+		cJSON_AddNumberToObject(messageToSend,"endTime",messages[currentCursor].endTime);
+		cJSON_AddItemToObject(messageToSend,"statistic",messages[currentCursor].statisticInfo);
+		cJSON_AddItemToObject(messageToSend,"raw",cJSON_CreateArray());
+		cJSON_AddStringToObject(messageToSend,"comment","This is a comment");
+
+		char *parsedStr=cJSON_PrintUnformatted(messageToSend);
+		cJSON_Delete(messageToSend);
+
+		currentCursor=(currentCursor+1)%QUEUE_SIZE;
+		count--;
+
+		ret=parsedStr;
+	}
+	else
+		ret=0;
+
+	vm_mutex_unlock(&mutexMessage);
 	return ret;
 }

@@ -108,6 +108,8 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portModeRegister(P)
 #include <..\Wearable_Device\Wearable_Device.ino>
 #include <..\Wearable_Device\ADXL345.h>
+#include <..\Wearable_Device\BTBinding.cpp>
+#include <..\Wearable_Device\BTBinding.h>
 #include <..\Wearable_Device\StatisticItem.cpp>
 #include <..\Wearable_Device\StatisticItem.h>
 #include <..\Wearable_Device\ThreadStarter.h>

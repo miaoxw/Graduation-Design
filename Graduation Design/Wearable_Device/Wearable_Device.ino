@@ -12,6 +12,7 @@
 #include "timestamp.h"
 
 #include "ADXL345.h"
+//#include "BTBinding.h"
 #include "command.h"
 #include "counter.h"
 #include "fall.h"
@@ -22,6 +23,7 @@
 
 using namespace ADXL345;
 using namespace std;
+//using namespace BluetoothBinding;
 using Pedometer::judgeFootstep;
 using fall::judgeFall;
 using Command::CommandHeap;
@@ -244,6 +246,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			vm_mutex_lock(&mutexMessage);
 			messageQueue.addMessage(currentStateStart,currentTimeStamp,messageType,statisticInfo);
 			vm_mutex_unlock(&mutexMessage);
+			vm_signal_post(sendMessage);
 
 			sportingNow=newestState;
 			stepCount=0;
@@ -332,8 +335,8 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 		char *parsedStr=cJSON_PrintUnformatted(fallAlarm);
 
 		//跌倒警报非常紧急，需要在连接状态下立即发送，而不论跌倒发生在过去多远的时刻
-		while(!LBTServer.connected())
-			vm_thread_sleep(3000);
+		//while(!LBTServer.connected())
+		//	vm_thread_sleep(3000);
 
 		LBTServer.write(parsedStr);
 		LBTServer.write('\x1F');
@@ -354,18 +357,18 @@ VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 	{
 		if(!LBTServer.connected())
 		{
-			Serial.println("connector: not connected");
-			//没有连接，等待连接
+			//Serial.println("connector: not connected");
 			if(LBTServer.accept(30))
 			{
-				Serial.println("connector: established");
+				//Serial.println("connector: established");
+
 				vm_signal_post(bluetoothOperationPermission);
 				noConnectionCount=0;
 				sleepTime=1000;
 			}
 			else
 			{
-				Serial.println("connector: timeout");
+				//Serial.println("connector: timeout");
 				noConnectionCount++;
 				//多次无连接可认为长时间不会有连接
 				if(noConnectionCount>=5)
@@ -373,16 +376,17 @@ VMINT32 blueToothConnector(VM_THREAD_HANDLE thread_handle,void *userData)
 				else
 					sleepTime=1000;
 			}
+			//}
 		}
 		//有连接则恢复较快检查频率
 		else
 		{
-			Serial.println("connector: already connected");
+			//Serial.println("connector: already connected");
 			vm_signal_post(bluetoothOperationPermission);
 			noConnectionCount=0;
 			sleepTime=2000;
 		}
-		Serial.println("connector: check later");
+		//Serial.println("connector: check later");
 		vm_thread_sleep(sleepTime);
 	}
 	return 0;
@@ -394,9 +398,9 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 
 	while(true)
 	{
-		Serial.println("receiver: waiting signal");
+		//Serial.println("receiver: waiting signal");
 		vm_signal_wait(bluetoothOperationPermission);
-		Serial.println("receiver: signal got");
+		//Serial.println("receiver: signal got");
 
 		//有内容待读取，这里假定一条正常消息的长度不会小于50B
 		if(LBTServer.connected()&&LBTServer.available()>50)
@@ -457,10 +461,19 @@ VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 {
 	while(true)
 	{
-		int messageSentCount=messageQueue.trySend();
+		vm_signal_wait(sendMessage);
 
-		Serial.iprintf("transmiter: %d stored message(s) sent.\n",messageSentCount);
-		vm_thread_sleep(10000);
+		char *JSONString=messageQueue.popOne();
+
+		while(JSONString!=NULL)
+		{
+			vm_signal_wait(bluetoothOperationPermission);
+			LBTServer.write(JSONString);
+			LBTServer.write('\x1F');
+
+			vm_free(JSONString);
+			JSONString=messageQueue.popOne();
+		}
 	}
 	return 0;
 }

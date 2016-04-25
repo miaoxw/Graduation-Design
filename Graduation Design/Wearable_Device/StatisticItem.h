@@ -38,7 +38,7 @@ namespace Statistic
 			SendMessageQueue();
 			~SendMessageQueue();
 			bool addMessage(unsigned int startTime,unsigned int endTime,StatisticType type,cJSON *statisticInfo);
-			int trySend();
+			char *popOne();
 	};
 }
 #endif

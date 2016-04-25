@@ -79,6 +79,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADXL345.h" />
+    <ClInclude Include="BTBinding.h" />
     <ClInclude Include="cJSON.h" />
     <ClInclude Include="cJSON_Utils.h" />
     <ClInclude Include="command.h" />
@@ -92,6 +93,7 @@
     <ClInclude Include="__vm\.Wearable_Device.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BTBinding.cpp" />
     <ClCompile Include="cJSON.c" />
     <ClCompile Include="cJSON_Utils.c" />
     <ClCompile Include="command.cpp" />
