@@ -62,7 +62,7 @@ void inline getReading(int *store)
 void setup()
 {
 	pinMode(13,OUTPUT);
-	Serial.begin(57600);
+	//Serial.begin(57600);
 
 	if(!LBTServer.begin((uint8_t*)"LinkIt ONE"))
 		vm_reboot_normal_start();
@@ -226,7 +226,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 
 		if(judgeFall(readings[0],readings[1],readings[2]))
 		{
-			Serial.println("Falling!");
+			//Serial.println("Falling!");
 			vm_signal_post(fallAlarm);
 		}
 
@@ -258,7 +258,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			if(judgeFootstep(acceleration))
 			{
 				stepCount++;
-				Serial.println("A step!");
+				//Serial.println("A step!");
 			}
 		}
 		else
@@ -314,12 +314,12 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle,void *userData)
 VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 {
 	VM_MSG_STRUCT message;
-	Serial.println("alarmsender: 1");
+	//Serial.println("alarmsender: 1");
 	while(true)
 	{
 		vm_thread_get_msg(&message);
 
-		Serial.println("alarmsender: 2");
+		//Serial.println("alarmsender: 2");
 
 		cJSON *fallAlarm=cJSON_CreateObject();
 
@@ -343,7 +343,7 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 		cJSON_Delete(fallAlarm);
 		vm_free(parsedStr);
 
-		Serial.println("alarmsender: 3");
+		//Serial.println("alarmsender: 3");
 	}
 	return 0;
 }
