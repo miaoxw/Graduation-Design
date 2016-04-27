@@ -236,24 +236,29 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 		bool newestState=isSporting(acceleration);
 		if(newestState!=sportingNow)
 		{
-			cJSON *messageToSend=cJSON_CreateObject();
+			if(sportingNow&&stepCount==0)
+				sportingNow=false;
+			else
+			{
+				cJSON *messageToSend=cJSON_CreateObject();
 
-			unsigned int currentTimeStamp;
-			LDateTime.getRtc(&currentTimeStamp);
+				unsigned int currentTimeStamp;
+				LDateTime.getRtc(&currentTimeStamp);
 
-			cJSON *statisticInfo=cJSON_CreateObject();
-			cJSON_AddBoolToObject(statisticInfo,"sporting",sportingNow);
-			cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
+				cJSON *statisticInfo=cJSON_CreateObject();
+				cJSON_AddBoolToObject(statisticInfo,"sporting",sportingNow);
+				cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
 
-			StatisticType messageType=Statistic::Pedometer;
-			vm_mutex_lock(&mutexMessage);
-			messageQueue.addMessage(currentStateStart,currentTimeStamp,messageType,statisticInfo);
-			vm_mutex_unlock(&mutexMessage);
-			vm_signal_post(sendMessage);
+				StatisticType messageType=Statistic::Pedometer;
+				vm_mutex_lock(&mutexMessage);
+				messageQueue.addMessage(currentStateStart,currentTimeStamp,messageType,statisticInfo);
+				vm_mutex_unlock(&mutexMessage);
+				vm_signal_post(sendMessage);
 
-			sportingNow=newestState;
-			stepCount=0;
-			LDateTime.getRtc(&currentStateStart);
+				sportingNow=newestState;
+				stepCount=0;
+				LDateTime.getRtc(&currentStateStart);
+			}
 		}
 
 		if(sportingNow)
