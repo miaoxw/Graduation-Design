@@ -32,7 +32,7 @@ using SportsJudge::isSporting;
 using Statistic::SendMessageQueue;
 using Statistic::StatisticType;
 
-VM_SIGNAL_ID fallAlarm,sendMessage,bluetoothOperationPermission;
+VM_SIGNAL_ID fallAlarm,sendMessage,bluetoothOperationPermission,timeSynced;
 vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand,mutexMessage;
 int readCount;
 volatile int globalReadings[3];
@@ -151,6 +151,7 @@ void setup()
 	fallAlarm=vm_signal_init();
 	sendMessage=vm_signal_init();
 	bluetoothOperationPermission=vm_signal_init();
+	timeSynced=vm_signal_init();
 
 	//建立其它工作线程
 	ThreadStarter startBlock;
@@ -198,8 +199,10 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 	unsigned int currentStateStart;
 	bool sportingNow=false;
 
-	uint32_t loopStart=millis();
+	//在时钟被校准后再开始工作
+	vm_signal_wait(timeSynced);
 
+	uint32_t loopStart=millis();
 
 	LDateTime.getRtc(&currentStateStart);
 	while(true)
@@ -314,6 +317,10 @@ VMINT32 dataCollector(VM_THREAD_HANDLE thread_handle,void *userData)
 VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 {
 	VM_MSG_STRUCT message;
+
+	//在时钟被校准后再开始工作
+	vm_signal_wait(timeSynced);
+
 	//Serial.println("alarmsender: 1");
 	while(true)
 	{
@@ -424,6 +431,10 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 				timestamp_format(YMDHmsBuffer,36,&timestampStruct);
 				sscanf(YMDHmsBuffer,"%d-%d-%dT%d:%d:%dZ",&dateTimeInfo.year,&dateTimeInfo.mon,&dateTimeInfo.day,&dateTimeInfo.hour,&dateTimeInfo.min,&dateTimeInfo.sec);
 				LDateTime.setTime(&dateTimeInfo);
+
+				//让时钟紧密相关的线程开始工作
+				vm_signal_post(timeSynced);
+				vm_signal_deinit(timeSynced);
 			}
 			//正常的操作指令
 			else
@@ -435,6 +446,7 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 					bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
 
 					//TODO: 操作蜂鸣器与扬声器
+					
 				}
 				//操作是定时指令
 				else
