@@ -110,6 +110,7 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <..\Wearable_Device\ADXL345.h>
 #include <..\Wearable_Device\BTBinding.cpp>
 #include <..\Wearable_Device\BTBinding.h>
+#include <..\Wearable_Device\Ports.h>
 #include <..\Wearable_Device\StatisticItem.cpp>
 #include <..\Wearable_Device\StatisticItem.h>
 #include <..\Wearable_Device\ThreadStarter.h>
@@ -123,6 +124,8 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <..\Wearable_Device\counter.h>
 #include <..\Wearable_Device\fall.cpp>
 #include <..\Wearable_Device\fall.h>
+#include <..\Wearable_Device\notification.cpp>
+#include <..\Wearable_Device\notification.h>
 #include <..\Wearable_Device\priority.h>
 #include <..\Wearable_Device\sportsJudge.cpp>
 #include <..\Wearable_Device\sportsJudge.h>

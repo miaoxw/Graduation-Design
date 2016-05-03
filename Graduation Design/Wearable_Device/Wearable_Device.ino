@@ -16,12 +16,15 @@
 #include "command.h"
 #include "counter.h"
 #include "fall.h"
+#include "notification.h"
+#include "Ports.h"
 #include "priority.h"
 #include "sportsJudge.h"
 #include "StatisticItem.h"
 #include "ThreadStarter.h"
 
 using namespace ADXL345;
+using namespace Notification;
 using namespace std;
 //using namespace BluetoothBinding;
 using Pedometer::judgeFootstep;
@@ -34,6 +37,7 @@ using Statistic::StatisticType;
 
 VM_SIGNAL_ID fallAlarm,sendMessage,bluetoothOperationPermission;
 vm_thread_mutex_struct mutexSensorDataWrite,mutexReaderCount,mutexSensor,mutexCommand,mutexMessage;
+VMUINT32 notifierHandle;
 int readCount;
 volatile int globalReadings[3];
 volatile double acceleration;
@@ -61,7 +65,12 @@ void inline getReading(int *store)
 
 void setup()
 {
+	pinMode(BUZZER_PORT,OUTPUT);
+	pinMode(VIBRATOR_PORT,OUTPUT);
 	pinMode(13,OUTPUT);
+	digitalWrite(BUZZER_PORT,LOW);
+	digitalWrite(VIBRATOR_PORT,LOW);
+	digitalWrite(13,LOW);
 	//Serial.begin(57600);
 
 	if(!LBTServer.begin((uint8_t*)"LinkIt ONE"))
@@ -439,8 +448,9 @@ VMINT32 blueToothReceiver(VM_THREAD_HANDLE thread_handle,void *userData)
 					bool beep=cJSON_GetObjectItem(jsonObject,"beep")->type;
 					bool vibrate=cJSON_GetObjectItem(jsonObject,"vibration")->type;
 
-					//TODO: 操作蜂鸣器与扬声器
-					
+					//操作蜂鸣器与扬声器
+					NotificationType type=(NotificationType)((beep?1:0)<<1|(vibrate?1:0));
+					vm_thread_send_msg(notifierHandle,type,NULL);
 				}
 				//操作是定时指令
 				else
@@ -484,6 +494,36 @@ VMINT32 blueToothTransmitter(VM_THREAD_HANDLE thread_handle,void *userData)
 	return 0;
 }
 
+VMINT32 notifier(VM_THREAD_HANDLE thread_handle,void *userData)
+{
+	void (*functionTable[])()={doNothing,vibrateOnly,beepOnly,beepAndVibrate};
+	notifierHandle=vm_thread_get_current_handle();
+	VM_MSG_STRUCT message;
+
+	while(true)
+	{
+		vm_thread_get_msg(&message);
+
+		NotificationType notificationType=(NotificationType)message.message_id;
+		switch(notificationType)
+		{
+			case VibrateOnly:
+				vibrateOnly();
+				break;
+			case BeepOnly:
+				beepOnly();
+				break;
+			case BeepAndVibrate:
+				beepAndVibrate();
+				break;
+			case DoNothing:
+			default:
+				doNothing();
+				break;
+		}
+	}
+}
+
 void loop()
 {
 	unsigned int now;
@@ -496,7 +536,10 @@ void loop()
 	if(tmp.timeStamp<=now)
 	{
 		commandHeap.pop();
+
 		//Operate something else
+		NotificationType type=(NotificationType)((tmp.beep?1:0)<<1|(tmp.vibration?1:0));
+		vm_thread_send_msg(notifierHandle,type,NULL);
 	}
 	vm_mutex_unlock(&mutexCommand);
 

@@ -57,6 +57,9 @@
     <ClCompile Include="BTBinding.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="notification.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADXL345.h">
@@ -96,6 +99,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BTBinding.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ports.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="notification.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
