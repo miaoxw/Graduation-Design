@@ -24,9 +24,6 @@
     <ClCompile Include="fall.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="sportsJudge.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="command.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -60,6 +57,12 @@
     <ClCompile Include="notification.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sleep.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stateJudge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADXL345.h">
@@ -83,9 +86,6 @@
     <ClInclude Include="command.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="sportsJudge.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="cJSON.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -105,6 +105,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="notification.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sleep.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stateJudge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

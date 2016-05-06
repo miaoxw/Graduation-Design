@@ -19,7 +19,8 @@
 #include "notification.h"
 #include "Ports.h"
 #include "priority.h"
-#include "sportsJudge.h"
+#include "sleep.h"
+#include "stateJudge.h"
 #include "StatisticItem.h"
 #include "ThreadStarter.h"
 
@@ -31,7 +32,16 @@ using Pedometer::judgeFootstep;
 using fall::judgeFall;
 using Command::CommandHeap;
 using Command::CommandItem;
-using SportsJudge::isSporting;
+using Sleep::sleep_conf;
+using Sleep::sleep_get_count;
+using Sleep::sleep_get_state;
+using Sleep::sleep_init;
+using Sleep::sleep_on_data;
+using SportsJudge::SportState;
+using SportsJudge::Awake;
+using SportsJudge::Sleeping;
+using SportsJudge::Sporting;
+using SportsJudge::getNewState;
 using Statistic::SendMessageQueue;
 using Statistic::StatisticType;
 
@@ -43,6 +53,9 @@ volatile int globalReadings[3];
 volatile double acceleration;
 CommandHeap commandHeap;
 SendMessageQueue messageQueue;
+
+unsigned short m_k_vals[]={15,15,15,8,21,12,13};
+struct sleep_conf sleepConfig;
 
 void inline getReading(int *store)
 {
@@ -161,6 +174,19 @@ void setup()
 	sendMessage=vm_signal_init();
 	bluetoothOperationPermission=vm_signal_init();
 
+	//初始化睡眠参数
+	sleepConfig.m_hz=50;
+	sleepConfig.m_short_period=4;
+	sleepConfig.m_long_period=100;
+	sleepConfig.m_max_sleep_minc=720;
+	sleepConfig.m_ks.m_values=m_k_vals;
+	sleepConfig.m_ks.m_len=7;
+	sleepConfig.m_ks.m_offset=2;
+	sleepConfig.m_threhold.m_webster=4000;
+	sleepConfig.m_threhold.m_rovel=30;
+	sleepConfig.m_threhold.m_head=15;
+	sleepConfig.m_states_period=10;
+
 	//建立其它工作线程
 	ThreadStarter startBlock;
 	startBlock.func=dataCollector;
@@ -205,7 +231,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 
 	long stepCount=0;
 	unsigned int currentStateStart;
-	bool sportingNow=false;
+	SportState currentState=SportState(Awake);
 
 	uint32_t loopStart=millis();
 
@@ -238,11 +264,11 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 			vm_signal_post(fallAlarm);
 		}
 
-		bool newestState=isSporting(acceleration);
-		if(newestState!=sportingNow)
+		SportState newestState=getNewState(acceleration,readings[0],readings[1],readings[2]);
+		if(newestState!=currentState)
 		{
-			if(sportingNow&&stepCount==0)
-				sportingNow=false;
+			if(currentState==Sporting&&stepCount==0)
+				currentState=Awake;
 			else
 			{
 				cJSON *messageToSend=cJSON_CreateObject();
@@ -251,33 +277,70 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 				LDateTime.getRtc(&currentTimeStamp);
 
 				cJSON *statisticInfo=cJSON_CreateObject();
-				cJSON_AddBoolToObject(statisticInfo,"sporting",sportingNow);
-				cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
+				StatisticType messageType;
 
-				StatisticType messageType=Statistic::Pedometer;
+				switch(currentState)
+				{
+					case Sporting:
+						messageType=Statistic::Pedometer;
+						cJSON_AddBoolToObject(statisticInfo,"sporting",true);
+						cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
+						break;
+					case Awake:
+						messageType=Statistic::Pedometer;
+						cJSON_AddBoolToObject(statisticInfo,"sporting",false);
+						cJSON_AddNumberToObject(statisticInfo,"steps",0);
+						break;
+					case Sleeping:
+						messageType=Statistic::SleepAnalysis;
+						int totalTime=sleep_get_count();
+						int identifiedTime[]={0,0,0,0};
+						for(int i=0;i<totalTime;i++)
+							identifiedTime[sleep_get_state(i)]++;
+
+						cJSON_AddNumberToObject(statisticInfo,"total",totalTime);
+						cJSON_AddNumberToObject(statisticInfo,"awake",identifiedTime[0]);
+						cJSON_AddNumberToObject(statisticInfo,"lightSleep",identifiedTime[1]);
+						cJSON_AddNumberToObject(statisticInfo,"deepSleep",identifiedTime[2]);
+						cJSON_AddNumberToObject(statisticInfo,"REM",identifiedTime[3]);
+						break;
+				}
+
 				vm_mutex_lock(&mutexMessage);
 				messageQueue.addMessage(currentStateStart,currentTimeStamp,messageType,statisticInfo);
 				vm_mutex_unlock(&mutexMessage);
 				vm_signal_post(sendMessage);
 
-				sportingNow=newestState;
-				stepCount=0;
+				currentState=newestState;
+				if(newestState==Sporting)
+				{
+					stepCount=0;
+					Pedometer::init();
+				}
+				if(newestState==Sleeping)
+				{
+					sleep_init(&sleepConfig);
+				}
+				if(newestState==Awake)
+				{
+					//Nothing to do
+					stepCount=0;
+				}
+
 				LDateTime.getRtc(&currentStateStart);
 			}
 		}
 
-		if(sportingNow)
+		switch(currentState)
 		{
-			if(judgeFootstep(acceleration))
-			{
-				stepCount++;
-				//Serial.println("A step!");
-			}
-		}
-		else
-		{
-			//TODO:
-			//Codes about sleep monitoring
+			case Sporting:
+			case Awake:
+				if(judgeFootstep(acceleration))
+					stepCount++;
+				break;
+			case Sleeping:
+				sleep_on_data(readings[0],readings[1],readings[2]);
+				break;
 		}
 
 		uint32_t now=millis();

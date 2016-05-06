@@ -83,7 +83,7 @@ char *Statistic::SendMessageQueue::popOne()
 				cJSON_AddStringToObject(messageToSend,"type","pedometer");
 				break;
 			case SleepAnalysis:
-				cJSON_AddStringToObject(messageToSend,"type","sleepAnalysis");
+				cJSON_AddStringToObject(messageToSend,"type","sleep");
 				break;
 			default:
 				break;
