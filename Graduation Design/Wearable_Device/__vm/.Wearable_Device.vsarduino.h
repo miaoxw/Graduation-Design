@@ -127,8 +127,10 @@ extern "C" void __cxa_pure_virtual() {;}
 #include <..\Wearable_Device\notification.cpp>
 #include <..\Wearable_Device\notification.h>
 #include <..\Wearable_Device\priority.h>
-#include <..\Wearable_Device\sportsJudge.cpp>
-#include <..\Wearable_Device\sportsJudge.h>
+#include <..\Wearable_Device\sleep.cpp>
+#include <..\Wearable_Device\sleep.h>
+#include <..\Wearable_Device\stateJudge.cpp>
+#include <..\Wearable_Device\stateJudge.h>
 #include <..\Wearable_Device\timestamp.h>
 #include <..\Wearable_Device\timestamp_compare.c>
 #include <..\Wearable_Device\timestamp_format.c>

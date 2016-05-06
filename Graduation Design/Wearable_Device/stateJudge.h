@@ -8,7 +8,12 @@
 #endif
 namespace SportsJudge
 {
-	bool isSporting(double acceleration);
+	enum SportState
+	{
+		Sleeping,Awake,Sporting
+	};
+
+	SportState getNewState(double acceleration,int accX,int accY,int accZ);
 }
 #endif
 
