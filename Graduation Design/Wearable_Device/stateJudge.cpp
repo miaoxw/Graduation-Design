@@ -73,6 +73,11 @@ SportState SportsJudge::getNewState(double acceleration,int accX,int accY,int ac
 						double theta=acos(accZ/sqrt(accX*accX+accY+accY+accZ*accZ))*180/PI;
 						if(theta>=60&&theta<=120)
 							lyingCount++;
+						else
+						{
+							lyingCount=0;
+							::stableCount=0;
+						}
 						//³¬¹ı30ÃëµÄÆ½ÌÉ×´Ì¬
 						if(lyingCount>600)
 						{
