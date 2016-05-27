@@ -46,6 +46,7 @@ bool Statistic::SendMessageQueue::addMessage(unsigned int startTime,unsigned int
 	messages[posToWrite].startTime=startTime;
 	messages[posToWrite].endTime=endTime;
 	messages[posToWrite].type=type;
+
 	if(statisticsInfo==NULL)
 	{
 		messages[posToWrite].statisticInfo=cJSON_CreateObject();
@@ -97,6 +98,7 @@ char *Statistic::SendMessageQueue::popOne()
 
 		char *parsedStr=cJSON_PrintUnformatted(messageToSend);
 		cJSON_Delete(messageToSend);
+		messages[currentCursor].statisticInfo=NULL;
 
 		currentCursor=(currentCursor+1)%QUEUE_SIZE;
 		count--;
