@@ -268,7 +268,7 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 		if(newestState!=currentState)
 		{
 			if(currentState==Sporting&&stepCount==0)
-				currentState=Awake;
+				currentState=SportState(Awake);
 			else
 			{
 				cJSON *messageToSend=cJSON_CreateObject();
@@ -281,17 +281,17 @@ VMINT32 dataFetcher(VM_THREAD_HANDLE thread_handle,void *userData)
 
 				switch(currentState)
 				{
-					case Sporting:
+					case SportState(Sporting):
 						messageType=Statistic::Pedometer;
 						cJSON_AddBoolToObject(statisticInfo,"sporting",true);
 						cJSON_AddNumberToObject(statisticInfo,"steps",stepCount);
 						break;
-					case Awake:
+					case SportState(Awake):
 						messageType=Statistic::Pedometer;
 						cJSON_AddBoolToObject(statisticInfo,"sporting",false);
 						cJSON_AddNumberToObject(statisticInfo,"steps",0);
 						break;
-					case Sleeping:
+					case SportState(Sleeping):
 						messageType=Statistic::SleepAnalysis;
 						int totalTime=sleep_get_count();
 						int identifiedTime[]={0,0,0,0};
