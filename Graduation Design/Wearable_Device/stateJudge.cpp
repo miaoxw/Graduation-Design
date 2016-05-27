@@ -18,7 +18,7 @@ static int lyingCount=0;
 
 SportState SportsJudge::getNewState(double acceleration,int accX,int accY,int accZ)
 {
-	SportState ret;
+	SportState ret=lastState;
 
 	//此处设计为类似FSM的判别形式
 	switch(lastState)
