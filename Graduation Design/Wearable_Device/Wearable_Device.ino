@@ -397,6 +397,9 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 		vm_thread_get_msg(&message);
 
 		//Serial.println("alarmsender: 2");
+		digitalWrite(BUZZER_PORT,HIGH);
+		vm_thread_sleep(1000);
+		digitalWrite(BUZZER_PORT,LOW);
 
 		cJSON *fallAlarm=cJSON_CreateObject();
 
@@ -411,9 +414,8 @@ VMINT32 fallAlarmSender(VM_THREAD_HANDLE thread_handle,void *userData)
 
 		char *parsedStr=cJSON_PrintUnformatted(fallAlarm);
 
-		//跌倒警报非常紧急，需要在连接状态下立即发送，而不论跌倒发生在过去多远的时刻
-		//while(!LBTServer.connected())
-		//	vm_thread_sleep(3000);
+		//此线程优先级比普通的消息发送线程更高，因此同时有内容发送时，求救信息会更先发出
+		vm_signal_wait(bluetoothOperationPermission);
 
 		LBTServer.write(parsedStr);
 		LBTServer.write('\x1F');
